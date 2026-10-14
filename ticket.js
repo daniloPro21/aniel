@@ -1,6 +1,7 @@
 /* Billet « Wedding Pass » : le visuel billet.jpg (872×1820) sert de fond,
    on y écrit le nom de l'invité dans le cadre « M./MME » et on pose le QR code
-   dans le cadre blanc du talon vert. Utilisé par index.html et admin.html. */
+   dans le cadre blanc du talon vert, puis le billet est tourné à l'horizontale (1820×872).
+   Utilisé par index.html et admin.html. */
 (function () {
   const BG = '/billet.jpg';
   const W = 872, H = 1820, SCALE = 2;              // rendu ×2 pour un texte net
@@ -47,7 +48,12 @@
     x.imageSmoothingEnabled = true;
     vText(x, guest.code, 546, 1519, `700 22px ${MONO}`, GREEN, 'center');
 
-    return c.toDataURL('image/png');
+    // Billet final à l'horizontale : rotation de 90° (sens inverse des aiguilles d'une montre)
+    const out = document.createElement('canvas'); out.width = c.height; out.height = c.width;
+    const o = out.getContext('2d');
+    o.translate(0, out.height); o.rotate(-Math.PI / 2);
+    o.drawImage(c, 0, 0);
+    return out.toDataURL('image/png');
   }
 
   window.renderTicket = renderTicket;

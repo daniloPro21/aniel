@@ -159,9 +159,9 @@
   @media print {
     body * { visibility: hidden; }
     #ticket-print, #ticket-print * { visibility: visible; }
-    #ticket-print { position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: 100%; box-shadow: none !important; }
+    #ticket-print { position: absolute; left: 0; top: 0; width: 100%; height: auto; max-width: 100%; box-shadow: none !important; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { size: portrait; margin: 10mm; }
+    @page { size: landscape; margin: 10mm; }
     #intro, .grain::after { display: none; }
   }
 </style>
@@ -810,10 +810,10 @@ function Ticket({ guest, offline }) {
     <div>
       ${offline && html`<p className="mx-auto mb-6 max-w-md rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-center text-sm text-amber-100">Mode test : cette réponse est enregistrée uniquement sur cet appareil.</p>`}
       ${img
-        ? html`<img id="ticket-print" src=${img} alt=${`Billet de ${guest.prenom} ${guest.nom}, code ${guest.code}`} className="fade-in mx-auto w-full max-w-xs rounded-2xl shadow-[0_40px_100px_-30px_rgba(232,203,143,.45)] ring-1 ring-or-300/30 sm:max-w-sm" style=${{ animationDuration: '1.2s' }} />`
+        ? html`<img id="ticket-print" src=${img} alt=${`Billet de ${guest.prenom} ${guest.nom}, code ${guest.code}`} className="fade-in mx-auto w-full max-w-3xl rounded-2xl shadow-[0_40px_100px_-30px_rgba(232,203,143,.45)] ring-1 ring-or-300/30" style=${{ animationDuration: '1.2s' }} />`
         : fail
           ? html`<div className="mx-auto max-w-xs text-center">${qr && html`<img src=${qr} alt=${`QR code ${guest.code}`} className="mx-auto h-56 w-56 rounded-xl bg-white p-2" />`}<p className="mt-3 font-semibold text-ivoire">${guest.code}</p></div>`
-          : html`<div className="mx-auto aspect-[872/1820] w-full max-w-xs animate-pulse rounded-2xl bg-ivoire/5 sm:max-w-sm"></div>`}
+          : html`<div className="mx-auto aspect-[1820/872] w-full max-w-3xl animate-pulse rounded-2xl bg-ivoire/5"></div>`}
 
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <button onClick=${() => dl(img, `billet-annie-daniel-${guest.code}.png`)} disabled=${!img} className=${btnPrimary}>Télécharger le billet</button>

@@ -79,14 +79,14 @@ function TicketView({ code, initial, onClose }) {
   }, [g]);
   return html`
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-emeraude-950/70 p-4" onClick=${onClose}>
-      <div className="my-6 w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl" onClick=${(e) => e.stopPropagation()}>
+      <div className="my-6 w-full max-w-3xl rounded-3xl bg-white p-5 shadow-2xl" onClick=${(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <p className="font-display text-xl">${g ? `${g.prenom} ${g.nom}` : code}</p>
           <button onClick=${onClose} className="rounded-full px-3 py-1 text-2xl leading-none text-emeraude-900/60 hover:bg-emeraude-50" aria-label="Fermer">×</button>
         </div>
         ${err && html`<p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
-        ${img ? html`<img src=${img} alt=${`Billet ${code}`} className="mx-auto w-full max-w-xs rounded-xl shadow ring-1 ring-or-500/40" />`
-              : !err && html`<div className="mx-auto aspect-[872/1820] w-full max-w-xs animate-pulse rounded-xl bg-emeraude-50"></div>`}
+        ${img ? html`<img src=${img} alt=${`Billet ${code}`} className="mx-auto w-full rounded-xl shadow ring-1 ring-or-500/40" />`
+              : !err && html`<div className="mx-auto aspect-[1820/872] w-full animate-pulse rounded-xl bg-emeraude-50"></div>`}
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <button className=${btnPrimary} disabled=${!img} onClick=${() => window.downloadUrl(img, `billet-annie-daniel-${code}.png`)}>Télécharger le billet</button>
           <button className=${btnGhost} disabled=${!g} onClick=${() => window.downloadUrl(g.qr, `qrcode-${code}.png`)}>Télécharger le QR code</button>

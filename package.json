@@ -4,7 +4,7 @@
   "private": true,
   "description": "Site de mariage Annie & Daniel — 12 décembre 2026",
   "engines": {
-    "node": ">=18"
+    "node": "22.x"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
