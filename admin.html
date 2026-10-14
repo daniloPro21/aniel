@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin — Annie & Daniel</title>
+<meta name="theme-color" content="#0a3024">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💍%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          emeraude: { 50:'#F2F7F4', 100:'#DDEEE6', 600:'#138063', 700:'#0F6650', 800:'#0C4033', 900:'#0A3024', 950:'#06251B' },
+          or: { 300:'#E8CB8F', 400:'#D4AE6A', 500:'#C0954D', 600:'#A27A36' },
+          brule: { 500:'#E2672B', 600:'#C9561F' }
+        },
+        fontFamily: {
+          display: ['"Playfair Display"', 'Georgia', 'serif'],
+          script: ['"Great Vibes"', 'cursive'],
+          sans: ['Montserrat', 'system-ui', 'sans-serif']
+        }
+      }
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="/ticket.js"></script>
+<style>body { background: #F2F7F4; }</style>
+</head>
+<body class="font-sans text-emeraude-950">
+<div id="root"></div>
+
+<script>
+const { useState, useEffect, useRef, useCallback } = React;
+const html = htm.bind(React.createElement);
+
+const KEY_STORE = 'ad-admin-key';
+const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ''; } catch { return ''; } };
+const setKey = (k) => { try { k ? sessionStorage.setItem(KEY_STORE, k) : sessionStorage.removeItem(KEY_STORE); } catch {} };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'x-admin-key': getKey(), ...(opts.headers || {}) } });
+  const data = (res.headers.get('content-type') || '').includes('application/json') ? await res.json() : {};
+  if (!res.ok) { const e = new Error(data.error || 'Une erreur est survenue.'); e.status = res.status; throw e; }
+  return data;
+}
+
+const inputCls = 'w-full rounded-xl border border-emeraude-900/20 bg-white px-4 py-3 text-sm placeholder:text-emeraude-900/40 focus:outline-none focus:ring-2 focus:ring-or-500/60 focus:border-or-500';
+const btnPrimary = 'inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-or-500 to-or-400 px-6 py-2.5 text-sm font-semibold text-emeraude-950 shadow hover:brightness-105 active:scale-[.98] transition disabled:opacity-60';
+const btnGhost = 'inline-flex items-center justify-center gap-2 rounded-full border border-or-500/70 px-5 py-2.5 text-sm font-medium text-emeraude-900 hover:bg-or-500/10 transition disabled:opacity-60';
+const STATUS = {
+  oui: ['Présent', 'bg-emeraude-100 text-emeraude-800'],
+  non: ['Absent', 'bg-red-100 text-red-800'],
+  attente: ['En attente', 'bg-amber-100 text-amber-900'],
+};
+const fmtTime = (iso) => new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+/* --- Billet : rendu + téléchargements --- */
+function TicketView({ code, initial, onClose }) {
+  const [g, setG] = useState(initial && initial.qr ? initial : null);
+  const [img, setImg] = useState('');
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    if (g) return;
+    api('/api/guests?code=' + encodeURIComponent(code)).then((d) => setG(d.guest)).catch((e) => setErr(e.message));
+  }, [code]);
+  useEffect(() => {
+    if (!g) return;
+    window.renderTicket(g, g.qr).then(setImg).catch(() => setErr('Impossible de dessiner le billet.'));
+  }, [g]);
+  return html`
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-emeraude-950/70 p-4" onClick=${onClose}>
+      <div className="my-6 w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl" onClick=${(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="font-display text-xl">${g ? `${g.prenom} ${g.nom}` : code}</p>
+          <button onClick=${onClose} className="rounded-full px-3 py-1 text-2xl leading-none text-emeraude-900/60 hover:bg-emeraude-50" aria-label="Fermer">×</button>
+        </div>
+        ${err && html`<p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
+        ${img ? html`<img src=${img} alt=${`Billet ${code}`} className="mx-auto w-full max-w-xs rounded-xl shadow ring-1 ring-or-500/40" />`
+              : !err && html`<div className="mx-auto aspect-[872/1820] w-full max-w-xs animate-pulse rounded-xl bg-emeraude-50"></div>`}
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button className=${btnPrimary} disabled=${!img} onClick=${() => window.downloadUrl(img, `billet-annie-daniel-${code}.png`)}>Télécharger le billet</button>
+          <button className=${btnGhost} disabled=${!g} onClick=${() => window.downloadUrl(g.qr, `qrcode-${code}.png`)}>Télécharger le QR code</button>
+        </div>
+        ${g && html`<p className="mt-4 break-all text-center text-xs text-emeraude-900/60">Lien de l’invitation : ${location.origin}/?code=${g.code}</p>`}
+      </div>
+    </div>`;
+}
+
+/* --- Liste + recherche --- */
+function Guests({ onOpen, refresh }) {
+  const [q, setQ] = useState('');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const load = useCallback(async (val) => {
+    setErr('');
+    try { setData(await api('/api/guests' + (val ? '?q=' + encodeURIComponent(val) : ''))); }
+    catch (e) { setErr(e.message); }
+  }, []);
+  useEffect(() => { const t = setTimeout(() => load(q.trim()), 250); return () => clearTimeout(t); }, [q, refresh]);
+
+  const del = async (g) => {
+    if (!confirm(`Supprimer l’invitation de ${g.prenom} ${g.nom} (${g.code}) ?`)) return;
+    try { await api('/api/guests?code=' + encodeURIComponent(g.code), { method: 'DELETE' }); load(q.trim()); }
+    catch (e) { setErr(e.message); }
+  };
+  const csv = async () => {
+    const res = await fetch('/api/guests?format=csv', { headers: { 'x-admin-key': getKey() } });
+    if (!res.ok) return setErr('Export impossible.');
+    window.downloadUrl(URL.createObjectURL(await res.blob()), 'invites-annie-daniel.csv');
+  };
+
+  const t = data && data.total;
+  return html`
+    <div>
+      ${t && html`
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          ${[['Invitations', t.reponses], ['Présents', t.presents], ['En attente', t.attente], ['Personnes', t.personnes], ['Arrivés', t.arrives]].map(([l, v]) => html`
+            <div key=${l} className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs text-emeraude-900/60">${l}</p><p className="text-2xl font-semibold">${v}</p></div>`)}
+        </div>`}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <input className=${inputCls} value=${q} onChange=${(e) => setQ(e.target.value)} placeholder="Rechercher par nom, prénom, code (AD-XXXXXX) ou e-mail" />
+        <button className=${btnGhost + ' shrink-0'} onClick=${csv}>Export CSV</button>
+      </div>
+      ${err && html`<p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
+      ${data && !data.guests.length && html`<p className="py-10 text-center text-sm text-emeraude-900/60">Aucune invitation trouvée.</p>`}
+      <ul className="space-y-2">
+        ${data && data.guests.map((g) => html`
+          <li key=${g.code} className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">${g.prenom} ${g.nom} <span className="font-normal text-emeraude-900/60">· ${g.personnes || 0} pers.</span></p>
+              <p className="text-xs text-emeraude-900/60">${g.code}${g.email ? ' · ' + g.email : ''}${g.telephone ? ' · ' + g.telephone : ''}</p>
+            </div>
+            <span className=${'rounded-full px-3 py-1 text-xs font-medium ' + (STATUS[g.presence] || STATUS.attente)[1]}>${(STATUS[g.presence] || STATUS.attente)[0]}</span>
+            ${g.checkedInAt && html`<span className="rounded-full bg-emeraude-900 px-3 py-1 text-xs font-medium text-white">Arrivé ${fmtTime(g.checkedInAt)}</span>`}
+            <div className="flex gap-2">
+              <button className=${btnGhost + ' !px-4 !py-1.5'} onClick=${() => onOpen(g.code)}>Billet</button>
+              <button className="rounded-full px-3 py-1.5 text-sm text-red-700 hover:bg-red-50" onClick=${() => del(g)}>Supprimer</button>
+            </div>
+          </li>`)}
+      </ul>
+    </div>`;
+}
+
+/* --- Nouvelle invitation --- */
+function Create({ onCreated }) {
+  const empty = { prenom: '', nom: '', personnes: 1, telephone: '' };
+  const [f, setF] = useState(empty);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const submit = async (e) => {
+    e.preventDefault(); setErr('');
+    if (!f.prenom.trim() || !f.nom.trim()) return setErr('Prénom et nom requis.');
+    setBusy(true);
+    try { const d = await api('/api/guests', { method: 'POST', body: JSON.stringify(f) }); setF(empty); onCreated(d.guest); }
+    catch (ex) { setErr(ex.message); }
+    finally { setBusy(false); }
+  };
+  return html`
+    <form onSubmit=${submit} className="mx-auto max-w-xl space-y-4 rounded-3xl bg-white p-6 shadow-sm">
+      <p className="text-sm text-emeraude-900/70">Le billet (avec le nom et le QR code) est créé et enregistré immédiatement. Téléchargez-le ensuite pour l’envoyer à l’invité (WhatsApp, etc.).</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block"><span className="mb-1 block text-sm font-medium">Prénom</span><input className=${inputCls} value=${f.prenom} onChange=${set('prenom')} required /></label>
+        <label className="block"><span className="mb-1 block text-sm font-medium">Nom</span><input className=${inputCls} value=${f.nom} onChange=${set('nom')} required /></label>
+        <label className="block"><span className="mb-1 block text-sm font-medium">Nombre de personnes</span>
+          <select className=${inputCls} value=${f.personnes} onChange=${set('personnes')}>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => html`<option key=${n} value=${n}>${n}</option>`)}</select></label>
+        <label className="block"><span className="mb-1 block text-sm font-medium">Téléphone (facultatif)</span><input type="tel" className=${inputCls} value=${f.telephone} onChange=${set('telephone')} /></label>
+      </div>
+      ${err && html`<p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
+      <div className="text-center"><button type="submit" className=${btnPrimary} disabled=${busy}>${busy ? 'Création…' : 'Créer le billet'}</button></div>
+    </form>`;
+}
+
+/* --- Scanner à l'entrée --- */
+function Scanner() {
+  const video = useRef(null);
+  const [on, setOn] = useState(false);
+  const [camErr, setCamErr] = useState('');
+  const [result, setResult] = useState(null); // { guest, alreadyCheckedIn } | { error }
+  const [manual, setManual] = useState('');
+  const lock = useRef(false);
+
+  const check = async (text) => {
+    lock.current = true;
+    try { setResult(await api('/api/guests', { method: 'POST', body: JSON.stringify({ action: 'checkin', code: text }) })); }
+    catch (e) { setResult({ error: e.message }); }
+    if (navigator.vibrate) navigator.vibrate(120);
+  };
+
+  useEffect(() => {
+    if (!on) return;
+    let stream, raf, stopped = false;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        if (stopped) return stream.getTracks().forEach((t) => t.stop());
+        video.current.srcObject = stream;
+        await video.current.play();
+        const tick = () => {
+          if (stopped) return;
+          const v = video.current;
+          if (!lock.current && v && v.readyState >= 2 && v.videoWidth) {
+            canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0);
+            const r = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+            if (r && r.data) check(r.data);
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+      } catch (e) {
+        setCamErr('Caméra inaccessible. Autorisez la caméra (le site doit être ouvert en https) ou saisissez le code ci-dessous.');
+        setOn(false);
+      }
+    })();
+    return () => { stopped = true; cancelAnimationFrame(raf); stream && stream.getTracks().forEach((t) => t.stop()); };
+  }, [on]);
+
+  const next = () => { setResult(null); lock.current = false; };
+  const g = result && result.guest;
+  const tone = result && (result.error ? 'bg-red-600' : result.alreadyCheckedIn ? 'bg-amber-500' : 'bg-emeraude-700');
+
+  return html`
+    <div className="mx-auto max-w-md">
+      <div className="relative overflow-hidden rounded-3xl bg-emeraude-950 shadow">
+        <video ref=${video} playsInline muted className=${'aspect-square w-full object-cover ' + (on ? '' : 'hidden')}></video>
+        ${!on && html`<div className="flex aspect-square items-center justify-center p-6 text-center">
+          <button className=${btnPrimary} onClick=${() => { setCamErr(''); setOn(true); }}>Activer la caméra</button></div>`}
+        ${on && !result && html`<div className="pointer-events-none absolute inset-[18%] rounded-2xl border-4 border-or-300/80"></div>`}
+        ${result && html`
+          <div className=${'absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white ' + tone}>
+            ${result.error ? html`<p className="text-2xl font-semibold">✕ ${result.error}</p>` : html`
+              <p className="text-sm uppercase tracking-widest opacity-80">${result.alreadyCheckedIn ? 'Déjà scanné' : 'Bienvenue'}</p>
+              <p className="mt-2 font-display text-3xl">${g.prenom} ${g.nom}</p>
+              <p className="mt-2 text-lg">${g.personnes || 1} personne${(g.personnes || 1) > 1 ? 's' : ''} · ${g.code}</p>
+              ${result.alreadyCheckedIn && html`<p className="mt-2 text-sm">Entré(e) le ${fmtTime(g.checkedInAt)}</p>`}
+              ${g.presence === 'non' && html`<p className="mt-2 text-sm font-semibold">⚠ A répondu « absent »</p>`}`}
+            <button className="mt-6 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-emeraude-950" onClick=${next}>Scanner le suivant</button>
+          </div>`}
+      </div>
+      ${camErr && html`<p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${camErr}</p>`}
+      <form className="mt-4 flex gap-2" onSubmit=${(e) => { e.preventDefault(); if (manual.trim()) { check(manual); setManual(''); } }}>
+        <input className=${inputCls} value=${manual} onChange=${(e) => setManual(e.target.value)} placeholder="Ou saisir le code AD-XXXXXX" />
+        <button className=${btnGhost + ' shrink-0'}>Valider</button>
+      </form>
+      ${on && html`<p className="mt-3 text-center"><button className="text-sm text-emeraude-700 underline" onClick=${() => setOn(false)}>Arrêter la caméra</button></p>`}
+    </div>`;
+}
+
+/* --- Connexion + onglets --- */
+function Login({ onOk }) {
+  const [k, setK] = useState('');
+  const [err, setErr] = useState('');
+  const submit = async (e) => {
+    e.preventDefault(); setErr(''); setKey(k.trim());
+    try { await api('/api/guests?q=__test__'); onOk(); }
+    catch (ex) { setKey(''); setErr(ex.status === 401 ? 'Clé incorrecte.' : ex.message); }
+  };
+  return html`
+    <form onSubmit=${submit} className="mx-auto mt-24 max-w-sm space-y-4 rounded-3xl bg-white p-8 text-center shadow">
+      <p className="font-script text-5xl text-emeraude-900">Annie & Daniel</p>
+      <p className="text-sm text-emeraude-900/70">Espace administrateur</p>
+      <input type="password" className=${inputCls} value=${k} onChange=${(e) => setK(e.target.value)} placeholder="Clé admin" autoFocus />
+      ${err && html`<p className="text-sm text-red-700">${err}</p>`}
+      <button className=${btnPrimary}>Entrer</button>
+    </form>`;
+}
+
+function App() {
+  const [ok, setOk] = useState(Boolean(getKey()));
+  const [tab, setTab] = useState('list');
+  const [open, setOpen] = useState(null); // { code, initial }
+  const [refresh, setRefresh] = useState(0);
+  if (!ok) return html`<${Login} onOk=${() => setOk(true)} />`;
+  const tabs = [['list', 'Invités'], ['create', 'Nouvelle invitation'], ['scan', 'Scanner']];
+  return html`
+    <div className="mx-auto max-w-4xl px-4 pb-16">
+      <header className="flex items-center justify-between py-6">
+        <p className="font-script text-4xl text-emeraude-900">Annie & Daniel</p>
+        <button className="text-sm text-emeraude-700 underline" onClick=${() => { setKey(''); setOk(false); }}>Déconnexion</button>
+      </header>
+      <nav className="mb-6 flex rounded-full bg-white p-1 shadow-sm">
+        ${tabs.map(([k, l]) => html`<button key=${k} onClick=${() => setTab(k)}
+          className=${'flex-1 rounded-full px-3 py-2.5 text-sm font-medium transition ' + (tab === k ? 'bg-emeraude-900 text-white shadow' : 'text-emeraude-900 hover:bg-emeraude-50')}>${l}</button>`)}
+      </nav>
+      ${tab === 'list' && html`<${Guests} refresh=${refresh} onOpen=${(code) => setOpen({ code })} />`}
+      ${tab === 'create' && html`<${Create} onCreated=${(g) => { setRefresh((n) => n + 1); setOpen({ code: g.code, initial: g }); }} />`}
+      ${tab === 'scan' && html`<${Scanner} />`}
+      ${open && html`<${TicketView} code=${open.code} initial=${open.initial} onClose=${() => setOpen(null)} />`}
+    </div>`;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+</script>
+</body>
+</html>

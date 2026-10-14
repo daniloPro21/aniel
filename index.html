@@ -39,6 +39,7 @@
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="/ticket.js"></script>
 
 <style>
   html { scroll-behavior: smooth; }
@@ -99,9 +100,9 @@
   @media print {
     body * { visibility: hidden; }
     #ticket-print, #ticket-print * { visibility: visible; }
-    #ticket-print { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+    #ticket-print { position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: 100%; box-shadow: none !important; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { size: landscape; margin: 12mm; }
+    @page { size: portrait; margin: 10mm; }
     #curtain { display: none; }
   }
 </style>
@@ -242,15 +243,16 @@ function useCountdown(target) {
   return { d: Math.floor(diff / 864e5), h: Math.floor(diff / 36e5) % 24, m: Math.floor(diff / 6e4) % 60, s: Math.floor(diff / 1e3) % 60, done: diff === 0 };
 }
 
-function useQr(code, size = 800) {
-  const [url, setUrl] = useState('');
+function useQr(code, stored, size = 600) {
+  const [url, setUrl] = useState(stored || '');
   useEffect(() => {
+    if (stored) { setUrl(stored); return; }
     let off = false;
     QRCode.toDataURL(`${baseUrl()}/?code=${encodeURIComponent(code)}`, {
       width: size, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#0a3024', light: '#ffffff' }
     }).then((u) => { if (!off) setUrl(u); }).catch(() => {});
     return () => { off = true; };
-  }, [code]);
+  }, [code, stored]);
   return url;
 }
 
@@ -266,75 +268,7 @@ function Reveal({ as = 'div', dir = 'up', delay = 0, className = '', children })
   return html`<${as} ref=${ref} style=${{ transitionDelay: delay + 'ms' }} className=${`reveal reveal-${dir} ${on ? 'in' : ''} ${className}`}>${children}<//>`;
 }
 
-function dl(url, name) {
-  const a = document.createElement('a'); a.href = url; a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-}
-
-/* --- Billet en PNG (dessiné sur canvas : fiable partout, sans dépendance) --- */
-async function renderTicketPng(guest, qrUrl) {
-  try {
-    await Promise.all([document.fonts.load('600 56px Cinzel'), document.fonts.load('110px "Great Vibes"'), document.fonts.load('500 30px Montserrat'), document.fonts.load('600 30px Montserrat')]);
-  } catch {}
-  const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = qrUrl; });
-  const W = 1500, H = 640, SX = 1060;
-  const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d');
-  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
-  const rr = (x0, y0, w, h, r) => { x.beginPath(); x.moveTo(x0 + r, y0); x.arcTo(x0 + w, y0, x0 + w, y0 + h, r); x.arcTo(x0 + w, y0 + h, x0, y0 + h, r); x.arcTo(x0, y0 + h, x0, y0, r); x.arcTo(x0, y0, x0 + w, y0, r); x.closePath(); };
-
-  rr(0, 0, W, H, 36); x.save(); x.clip();
-  const g = x.createLinearGradient(0, 0, SX, H); g.addColorStop(0, '#0a3024'); g.addColorStop(1, '#0f6650');
-  x.fillStyle = g; x.fillRect(0, 0, SX, H);
-  x.fillStyle = '#F2F7F4'; x.fillRect(SX, 0, W - SX, H);
-  x.fillStyle = '#E2672B'; x.fillRect(0, 0, 14, H);          // liseré orange
-  x.restore();
-
-  // perforation
-  x.setLineDash([10, 12]); x.strokeStyle = '#C0954D'; x.lineWidth = 3;
-  x.beginPath(); x.moveTo(SX, 40); x.lineTo(SX, H - 40); x.stroke(); x.setLineDash([]);
-  x.fillStyle = '#fff'; [0, H].forEach((y) => { x.beginPath(); x.arc(SX, y, 30, 0, Math.PI * 2); x.fill(); });
-
-  const gold = '#E8CB8F';
-  x.textBaseline = 'alphabetic';
-  x.fillStyle = gold; x.font = '600 54px Cinzel, Georgia, serif';
-  try { x.letterSpacing = '8px'; } catch {}
-  x.fillText('WEDDING PASS', 70, 105);
-  try { x.letterSpacing = '0px'; } catch {}
-
-  x.fillStyle = '#fff'; x.font = '112px "Great Vibes", cursive';
-  x.fillText('Annie & Daniel', 66, 235);
-
-  x.strokeStyle = 'rgba(232,203,143,.55)'; x.lineWidth = 2;
-  x.beginPath(); x.moveTo(70, 275); x.lineTo(SX - 70, 275); x.stroke();
-
-  x.fillStyle = gold; x.font = '500 22px Montserrat, sans-serif'; x.fillText('Invité(e)', 70, 322);
-  let fs = 46; const name = `${guest.prenom} ${guest.nom}`;
-  do { x.font = `600 ${fs}px Montserrat, sans-serif`; fs -= 2; } while (x.measureText(name).width > SX - 140 && fs > 24);
-  x.fillStyle = '#fff'; x.fillText(name, 70, 376);
-
-  const col = (label, value, xx) => {
-    x.fillStyle = gold; x.font = '500 22px Montserrat, sans-serif'; x.fillText(label, xx, 442);
-    x.fillStyle = '#fff'; x.font = '600 34px Montserrat, sans-serif'; x.fillText(value, xx, 488);
-  };
-  col('Date', '12 · 12 · 2026', 70);
-  col('Personnes', String(guest.personnes || 1), 430);
-  col('Code', guest.code, 640);
-
-  x.fillStyle = 'rgba(255,255,255,.85)'; x.font = '400 24px Montserrat, sans-serif';
-  x.fillText('Bénédiction à 12h00 · Assemblée Plein Évangile de Kondengui', 70, 556);
-  x.fillText('Soirée dansante à 20h00 · El Pathenco, Kondengui', 70, 594);
-
-  // talon
-  x.fillStyle = '#fff'; rr(SX + 55, 70, 340, 340, 24); x.fill();
-  x.drawImage(img, SX + 70, 85, 310, 310);
-  x.fillStyle = '#0a3024'; x.textAlign = 'center';
-  x.font = '600 34px Montserrat, sans-serif'; x.fillText(guest.code, SX + 225, 470);
-  x.fillStyle = '#4b6a5f'; x.font = '400 22px Montserrat, sans-serif'; x.fillText('À présenter à l’entrée', SX + 225, 510);
-  x.fillStyle = '#E2672B'; x.font = '500 20px Montserrat, sans-serif'; x.fillText('12 décembre 2026', SX + 225, 560);
-  x.textAlign = 'left';
-  return c.toDataURL('image/png');
-}
+const dl = (url, name) => window.downloadUrl(url, name);
 
 /* =====================================================================
    COMPOSANTS
@@ -585,47 +519,31 @@ function Places() {
     </section>`;
 }
 
-/* --- Billet virtuel --- */
+/* --- Billet virtuel (rendu par ticket.js sur le visuel billet.jpg) --- */
 function Ticket({ guest, offline }) {
-  const qr = useQr(guest.code);
-  const [busy, setBusy] = useState(false);
-  const png = async () => {
-    setBusy(true);
-    try { dl(await renderTicketPng(guest, qr), `billet-annie-daniel-${guest.code}.png`); }
-    catch { alert('Le téléchargement a échoué. Essayez « Imprimer », puis « Enregistrer au format PDF ».'); }
-    finally { setBusy(false); }
-  };
+  const qr = useQr(guest.code, guest.qr);
+  const [img, setImg] = useState('');
+  const [fail, setFail] = useState(false);
+  useEffect(() => {
+    if (!qr) return;
+    let off = false;
+    setFail(false);
+    window.renderTicket(guest, qr).then((u) => { if (!off) setImg(u); }).catch(() => { if (!off) setFail(true); });
+    return () => { off = true; };
+  }, [qr, guest.code, guest.prenom, guest.nom, guest.personnes]);
   return html`
     <div>
       ${offline && html`<p className="mx-auto mb-4 max-w-3xl rounded-xl bg-amber-100 px-4 py-3 text-sm text-amber-900">Mode test : cette réponse est enregistrée uniquement sur cet appareil.</p>`}
-      <div id="ticket-print" className="mx-auto flex max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-or-500/40 md:flex-row">
-        <div className="relative flex-1 border-l-[10px] border-brule-500 bg-gradient-to-br from-emeraude-900 to-emeraude-700 p-7 text-white sm:p-9">
-          <p className="font-cinzel text-xl font-semibold tracking-[0.3em] text-or-300 sm:text-2xl">WEDDING PASS</p>
-          <p className="mt-1 font-script text-5xl sm:text-6xl">Annie & Daniel</p>
-          <div className="my-4 h-px bg-or-300/40"></div>
-          <p className="text-xs text-or-300">Invité(e)</p>
-          <p className="text-xl font-semibold sm:text-2xl">${guest.prenom} ${guest.nom}</p>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-            <div><p className="text-xs text-or-300">Date</p><p className="font-semibold">12 · 12 · 2026</p></div>
-            <div><p className="text-xs text-or-300">Personnes</p><p className="font-semibold">${guest.personnes || 1}</p></div>
-            <div><p className="text-xs text-or-300">Code</p><p className="font-semibold">${guest.code}</p></div>
-          </div>
-          <div className="mt-5 space-y-1 text-xs text-white/85">
-            <p>Bénédiction à 12h00 — Assemblée Plein Évangile de Kondengui</p>
-            <p>Soirée dansante à 20h00 — El Pathenco, Kondengui</p>
-          </div>
-        </div>
-        <div className="ticket-notch relative flex flex-col items-center justify-center border-t-2 border-dashed border-or-500/60 bg-emeraude-50 p-6 md:w-64 md:border-l-2 md:border-t-0">
-          ${qr ? html`<img src=${qr} alt=${`QR code de l’invitation ${guest.code}`} className="h-44 w-44 rounded-xl bg-white p-2 shadow" />` : html`<div className="h-44 w-44 animate-pulse rounded-xl bg-white"></div>`}
-          <p className="mt-3 text-sm font-semibold text-emeraude-900">${guest.code}</p>
-          <p className="text-xs text-emeraude-900/60">À présenter à l’entrée</p>
-        </div>
-      </div>
+      ${img
+        ? html`<img id="ticket-print" src=${img} alt=${`Billet de ${guest.prenom} ${guest.nom}, code ${guest.code}`} className="mx-auto w-full max-w-xs rounded-2xl shadow-2xl ring-1 ring-or-500/40 sm:max-w-sm" />`
+        : fail
+          ? html`<div className="mx-auto max-w-xs text-center">${qr && html`<img src=${qr} alt=${`QR code ${guest.code}`} className="mx-auto h-56 w-56 rounded-xl bg-white p-2 shadow" />`}<p className="mt-3 font-semibold text-emeraude-900">${guest.code}</p></div>`
+          : html`<div className="mx-auto aspect-[872/1820] w-full max-w-xs animate-pulse rounded-2xl bg-emeraude-50 sm:max-w-sm"></div>`}
 
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button onClick=${png} disabled=${!qr || busy} className=${btnPrimary}>${busy ? 'Préparation…' : 'Télécharger le billet'}</button>
+        <button onClick=${() => dl(img, `billet-annie-daniel-${guest.code}.png`)} disabled=${!img} className=${btnPrimary}>Télécharger le billet</button>
         <button onClick=${() => dl(qr, `qrcode-${guest.code}.png`)} disabled=${!qr} className=${btnGhost + ' text-emeraude-900'}>Télécharger le QR code</button>
-        <button onClick=${() => window.print()} className=${btnGhost + ' text-emeraude-900'}>Imprimer</button>
+        <button onClick=${() => window.print()} disabled=${!img} className=${btnGhost + ' text-emeraude-900'}>Imprimer</button>
       </div>
     </div>`;
 }
@@ -634,8 +552,20 @@ function Field({ label, hint, children }) {
   return html`<label className="block"><span className="mb-1.5 block text-sm font-medium text-emeraude-900">${label}</span>${children}${hint && html`<span className="mt-1 block text-xs text-emeraude-900/55">${hint}</span>`}</label>`;
 }
 
-function Outcome({ res, onReset, resetLabel }) {
+function Outcome({ res, onReset, resetLabel, onConfirm }) {
   const g = res.guest;
+  if (g.presence === 'attente') {
+    return html`
+      <div>
+        <div className="mb-8 text-center">
+          <h3 className="font-display text-3xl text-emeraude-900">Bienvenue, ${g.prenom}</h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-emeraude-900/70">Voici votre billet : le QR code vous sera demandé à l’entrée. Merci de nous confirmer votre présence.</p>
+          <button onClick=${() => onConfirm(g)} className=${btnPrimary + ' mt-5'}>Confirmer ma présence</button>
+        </div>
+        <${Ticket} guest=${g} offline=${res.offline} />
+        <p className="mt-8 text-center"><button onClick=${onReset} className="text-sm text-emeraude-700 underline underline-offset-4 hover:text-brule-500">${resetLabel}</button></p>
+      </div>`;
+  }
   if (g.presence === 'oui') {
     return html`
       <div>
@@ -658,7 +588,7 @@ function Outcome({ res, onReset, resetLabel }) {
 function Rsvp() {
   const [tab, setTab] = useState('rsvp');
   const [res, setRes] = useState(null);
-  const empty = { prenom: '', nom: '', email: '', telephone: '', presence: 'oui', personnes: 1, restrictions: '', website: '' };
+  const empty = { prenom: '', nom: '', email: '', telephone: '', presence: 'oui', personnes: 1, restrictions: '', website: '', code: '' };
   const [f, setF] = useState(empty);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -699,7 +629,11 @@ function Rsvp() {
     finally { setBusy(false); }
   };
 
-  const reset = () => { setRes(null); setErr(''); setSErr(''); };
+  const reset = () => { setRes(null); setErr(''); setSErr(''); setF(empty); };
+  const confirmInvite = (g) => {
+    setF({ ...empty, prenom: g.prenom, nom: g.nom, email: g.email || '', personnes: g.personnes || 1, code: g.code });
+    setRes(null); setErr(''); setTab('rsvp');
+  };
   const deadline = new Date(CONFIG.rsvpDeadline);
   const showDeadline = deadline > new Date();
 
@@ -715,7 +649,7 @@ function Rsvp() {
 
         <div className="mt-10 rounded-3xl bg-white p-5 shadow-2xl sm:p-10">
           ${res
-            ? html`<${Outcome} res=${res} onReset=${reset} resetLabel=${tab === 'rsvp' ? 'Modifier ma réponse ou inscrire une autre personne' : 'Faire une autre recherche'} />`
+            ? html`<${Outcome} res=${res} onReset=${reset} onConfirm=${confirmInvite} resetLabel=${tab === 'rsvp' ? 'Modifier ma réponse ou inscrire une autre personne' : 'Faire une autre recherche'} />`
             : html`
               <div>
                 <div className="mx-auto mb-8 flex max-w-md rounded-full bg-emeraude-50 p-1" role="tablist">
@@ -726,6 +660,7 @@ function Rsvp() {
 
                 ${tab === 'rsvp' ? html`
                   <form onSubmit=${submit} noValidate className="mx-auto max-w-xl space-y-5">
+                    ${f.code && html`<p className="rounded-xl bg-emeraude-50 px-4 py-3 text-center text-sm text-emeraude-900">Confirmation de l’invitation <strong>${f.code}</strong></p>`}
                     <div className="grid gap-5 sm:grid-cols-2">
                       <${Field} label="Prénom"><input className=${inputCls} value=${f.prenom} onChange=${set('prenom')} autoComplete="given-name" required /><//>
                       <${Field} label="Nom"><input className=${inputCls} value=${f.nom} onChange=${set('nom')} autoComplete="family-name" required /><//>

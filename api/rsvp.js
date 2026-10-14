@@ -1,25 +1,8 @@
-// POST /api/rsvp            -> enregistre ou met à jour une réponse (clé : e-mail)
+// POST /api/rsvp            -> enregistre ou met à jour une réponse (clé : code d'invitation s'il est fourni, sinon e-mail)
 // GET  /api/rsvp?q=<valeur> -> retrouve une invitation par code (AD-XXXXXX) ou par e-mail exact
-const crypto = require('crypto');
-const { getDb } = require('./_db');
+const { getDb, newCode, qrDataUrl, ensureQr, publicGuest, clean } = require('./_db');
 
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans 0/O/1/I
-const newCode = () =>
-  'AD-' + Array.from(crypto.randomBytes(6), (b) => ALPHABET[b % ALPHABET.length]).join('');
-
-const clean = (v, max) => String(v ?? '').trim().replace(/\s+/g, ' ').slice(0, max);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-const publicGuest = (g) => ({
-  code: g.code,
-  nom: g.nom,
-  prenom: g.prenom,
-  email: g.email,
-  presence: g.presence,
-  personnes: g.personnes,
-  restrictions: g.restrictions || '',
-  createdAt: g.created_at,
-});
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -38,6 +21,7 @@ module.exports = async (req, res) => {
       const personnes = Math.min(10, Math.max(1, parseInt(b.personnes, 10) || 1));
       const restrictions = clean(b.restrictions, 300);
       const message = clean(b.message, 500);
+      const inviteCode = clean(b.code, 20).toUpperCase();
 
       if (!prenom || !nom) return res.status(400).json({ error: 'Nom et prénom requis.' });
       if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Adresse e-mail invalide.' });
@@ -53,8 +37,18 @@ module.exports = async (req, res) => {
 
       let guest = null;
       for (let i = 0; i < 4 && !guest; i++) {
-        const found = await db.from('guests').select('*').eq('email', email).maybeSingle();
-        if (found.error) throw found.error;
+        // invitation créée depuis /admin : l'invité la confirme avec son code (sans créer de doublon)
+        let found = { data: null };
+        if (inviteCode) {
+          found = await db.from('guests').select('*').eq('code', inviteCode).maybeSingle();
+          if (found.error) throw found.error;
+          if (found.data && found.data.email && found.data.email !== email) found = { data: null };
+          if (found.data) row.email = email;
+        }
+        if (!found.data) {
+          found = await db.from('guests').select('*').eq('email', email).maybeSingle();
+          if (found.error) throw found.error;
+        }
 
         if (found.data) {
           // même e-mail : on met à jour et on conserve le code existant
@@ -62,7 +56,9 @@ module.exports = async (req, res) => {
           if (upd.error) throw upd.error;
           guest = upd.data;
         } else {
-          const ins = await db.from('guests').insert({ ...row, email, code: newCode() }).select().single();
+          const code = newCode();
+          const qr = await qrDataUrl(req, code);
+          const ins = await db.from('guests').insert({ ...row, email, code, qr, source: 'rsvp' }).select().single();
           if (ins.error) {
             if (ins.error.code === '23505') continue; // collision rare (code ou e-mail simultané) : on retente
             throw ins.error;
@@ -71,6 +67,7 @@ module.exports = async (req, res) => {
         }
       }
       if (!guest) return res.status(500).json({ error: 'Enregistrement impossible, réessayez.' });
+      guest = await ensureQr(db, req, guest);
       return res.status(200).json({ guest: publicGuest(guest) });
     }
 
@@ -86,7 +83,7 @@ module.exports = async (req, res) => {
         if (r.error) throw r.error;
       }
       if (!r.data) return res.status(404).json({ code: 'NOT_FOUND', error: 'Aucune invitation trouvée.' });
-      return res.status(200).json({ guest: publicGuest(r.data) });
+      return res.status(200).json({ guest: publicGuest(await ensureQr(db, req, r.data)) });
     }
 
     res.setHeader('Allow', 'GET, POST');
