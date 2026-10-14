@@ -27,6 +27,11 @@
     x.scale(SCALE, SCALE);
     x.drawImage(bg, 0, 0, W, H);
 
+    // Efface « AVANT LE 30/09/2026 » sous « RSVP » (x 622→668, y 1340→1715) avec le vert du talon
+    const [r, g, b] = x.getImageData(645 * SCALE, 1320 * SCALE, 1, 1).data;
+    x.fillStyle = `rgb(${r},${g},${b})`;
+    x.fillRect(622, 1340, 46, 375);
+
     // Nom dans le cadre « M./MME » (x 657→763, y 220→1085), à la suite de « M./MME »
     let name = `${guest.prenom} ${guest.nom}`.toUpperCase();
     if ((guest.personnes || 1) > 1) name += `  ×${guest.personnes}`;
