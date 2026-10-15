@@ -57,8 +57,36 @@
   }
 
   window.renderTicket = renderTicket;
-  window.downloadUrl = function (url, name) {
-    const a = document.createElement('a'); a.href = url; a.download = name;
+  // data URL -> Blob (synchrone, pour garder le « geste utilisateur » exigé par navigator.share)
+  function dataUrlToBlob(url) {
+    const [head, b64] = url.split(',');
+    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: (head.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream' });
+  }
+
+  function saveLink(href, name) {
+    const a = document.createElement('a'); a.href = href; a.download = name; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // Sur mobile (iPhone surtout), <a download> sur une grosse data URL ne fait rien :
+  // on passe par la feuille de partage (« Enregistrer l'image »), sinon par un lien Blob.
+  window.downloadUrl = async function (url, name) {
+    const isData = url.startsWith('data:');
+    const blob = isData ? dataUrlToBlob(url) : null;
+    const mobile = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    if (blob && mobile && navigator.canShare) {
+      const file = new File([blob], name, { type: blob.type });
+      if (navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: name }); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }  // partage annulé
+      }
+    }
+    const href = blob ? URL.createObjectURL(blob) : url;
+    saveLink(href, name);
+    // anciens iOS sans support de « download » : on ouvre l'image, appui long pour l'enregistrer
+    if (blob && mobile && !('download' in HTMLAnchorElement.prototype)) window.open(href, '_blank');
+    if (blob) setTimeout(() => URL.revokeObjectURL(href), 60000);
   };
 })();
