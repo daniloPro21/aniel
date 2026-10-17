@@ -23,6 +23,19 @@ alter table public.guests add column if not exists checked_in_at timestamptz;  -
 alter table public.guests drop constraint if exists guests_presence_check;
 alter table public.guests add constraint guests_presence_check check (presence in ('oui','non','attente'));
 
+-- v3 : placement à table (40 tables de 8 places par défaut) + invitations sans e-mail
+alter table public.guests add column if not exists table_num int;  -- numéro de table (null = pas encore placé)
+alter table public.guests add column if not exists shared_at timestamptz;  -- date d'envoi de l'invitation (WhatsApp)
+create index if not exists guests_table_num_idx on public.guests (table_num);
+
+-- v4 : noms des tables (lieux de la Bible par défaut, modifiables depuis /admin)
+create table if not exists public.wedding_tables (
+  num        int primary key,
+  name       text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.wedding_tables enable row level security;
+
 -- Sécurité : RLS activé et AUCUNE policy => la clé publique (anon) ne peut ni lire ni écrire.
 -- Seules les fonctions /api (avec la clé service_role, gardée côté serveur) accèdent aux données.
 alter table public.guests enable row level security;

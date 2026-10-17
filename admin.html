@@ -2,28 +2,30 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Admin — Annie & Daniel</title>
-<meta name="theme-color" content="#0a3024">
+<meta name="theme-color" content="#03110C">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💍%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
     theme: {
       extend: {
         colors: {
-          emeraude: { 50:'#F2F7F4', 100:'#DDEEE6', 600:'#138063', 700:'#0F6650', 800:'#0C4033', 900:'#0A3024', 950:'#06251B' },
-          or: { 300:'#E8CB8F', 400:'#D4AE6A', 500:'#C0954D', 600:'#A27A36' },
-          brule: { 500:'#E2672B', 600:'#C9561F' }
+          nuit: { DEFAULT: '#03110C', 900: '#03110C', 800: '#051A13', 700: '#07231A', 600: '#0A2D21' },
+          emeraude: { 300:'#7FC2A8', 400:'#3FA382', 500:'#1A8A68', 600:'#138063', 700:'#0F6650', 800:'#0C4033', 900:'#0A3024' },
+          or: { 100:'#FAF0D6', 200:'#F3DFA8', 300:'#E8CB8F', 400:'#D4AE6A', 500:'#C0954D', 600:'#A27A36' },
+          brule: { 400:'#F08A50', 500:'#E2672B' },
+          ivoire: '#F5EFE3'
         },
         fontFamily: {
-          display: ['"Playfair Display"', 'Georgia', 'serif'],
+          display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
           script: ['"Great Vibes"', 'cursive'],
-          sans: ['Montserrat', 'system-ui', 'sans-serif']
+          sans: ['Inter', 'system-ui', 'sans-serif']
         }
       }
     }
@@ -33,15 +35,49 @@
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/ticket.js"></script>
-<style>body { background: #F2F7F4; }</style>
+<style>
+  html, body { background: #03110C; }
+  body { color: #F5EFE3; -webkit-font-smoothing: antialiased; }
+  .font-display { font-variant-numeric: lining-nums; }
+  .tnum { font-variant-numeric: lining-nums tabular-nums; }
+  ::selection { background: #C0954D; color: #03110C; }
+  :focus-visible { outline: 2px solid #E8CB8F; outline-offset: 2px; }
+  .bg-app { background:
+      radial-gradient(60rem 40rem at 110% -10%, rgba(19,128,99,.22), transparent 60%),
+      radial-gradient(50rem 40rem at -20% 110%, rgba(192,149,77,.10), transparent 60%), #03110C; }
+  .card { border: 1px solid rgba(245,239,227,.08); background: linear-gradient(180deg, rgba(245,239,227,.045), rgba(245,239,227,.02)); border-radius: 24px; }
+  .gold-text { background: linear-gradient(100deg,#B98A3E,#F3DFA8 35%,#C0954D 60%,#F3DFA8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .field { width: 100%; border-radius: 14px; border: 1px solid rgba(245,239,227,.12); background: rgba(245,239,227,.04); padding: .75rem 1rem; font-size: .9rem; color: #F5EFE3; transition: border-color .3s, box-shadow .3s; }
+  .field::placeholder { color: rgba(245,239,227,.35); }
+  .field:focus { outline: none; border-color: rgba(232,203,143,.7); box-shadow: 0 0 0 4px rgba(232,203,143,.12); }
+  select.field option { background: #051A13; color: #F5EFE3; }
+  select.field option:disabled { color: rgba(245,239,227,.3); }
+  .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; } .scroll-thin::-webkit-scrollbar-thumb { background: rgba(232,203,143,.25); border-radius: 9px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise .6s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes pop { from { opacity: 0; transform: scale(.97) translateY(8px); } to { opacity: 1; transform: none; } }
+  .pop { animation: pop .35s cubic-bezier(.16,1,.3,1) both; }
+  @media (prefers-reduced-motion: reduce) { .rise, .pop { animation: none; } }
+</style>
 </head>
-<body class="font-sans text-emeraude-950">
+<body class="font-sans">
 <div id="root"></div>
 
 <script>
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef, useCallback, useMemo, Fragment } = React;
 const html = htm.bind(React.createElement);
+
+/* =====================================================================
+   Infos reprises dans le message WhatsApp
+   ===================================================================== */
+const EVENT = {
+  date: '2026-12-12T12:00:00+01:00',
+  jour: 'Samedi 12 décembre 2026',
+  benediction: '12h00 · Bénédiction · Plein Évangile, Assemblée de Kondengui',
+  soiree: '20h00 · Soirée dansante · El Pathenco, Kondengui',
+};
 
 const KEY_STORE = 'ad-admin-key';
 const getKey = () => { try { return sessionStorage.getItem(KEY_STORE) || ''; } catch { return ''; } };
@@ -54,134 +90,659 @@ async function api(path, opts = {}) {
   return data;
 }
 
-const inputCls = 'w-full rounded-xl border border-emeraude-900/20 bg-white px-4 py-3 text-sm placeholder:text-emeraude-900/40 focus:outline-none focus:ring-2 focus:ring-or-500/60 focus:border-or-500';
-const btnPrimary = 'inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-or-500 to-or-400 px-6 py-2.5 text-sm font-semibold text-emeraude-950 shadow hover:brightness-105 active:scale-[.98] transition disabled:opacity-60';
-const btnGhost = 'inline-flex items-center justify-center gap-2 rounded-full border border-or-500/70 px-5 py-2.5 text-sm font-medium text-emeraude-900 hover:bg-or-500/10 transition disabled:opacity-60';
-const STATUS = {
-  oui: ['Présent', 'bg-emeraude-100 text-emeraude-800'],
-  non: ['Absent', 'bg-red-100 text-red-800'],
-  attente: ['En attente', 'bg-amber-100 text-amber-900'],
-};
+const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
 const fmtTime = (iso) => new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const initials = (g) => ((g.prenom || '')[0] || '') + ((g.nom || '')[0] || '');
+const NAMES = {};   // numéro de table -> nom (lieux de la Bible), rempli à chaque chargement
+const tableLabel = (n) => n ? `${n} · ${NAMES[n] || 'Table ' + n}` : '';
+const PERSONNES = [[1, 'Seul(e)'], [2, 'En couple']];
+const inviteLink = (code) => `${location.origin}/?code=${code}`;
 
-/* --- Billet : rendu + téléchargements --- */
-function TicketView({ code, initial, onClose }) {
-  const [g, setG] = useState(initial && initial.qr ? initial : null);
-  const [img, setImg] = useState('');
-  const [err, setErr] = useState('');
+const STATUS = {
+  oui: ['Confirmé', 'bg-emeraude-400/15 text-emeraude-300 ring-emeraude-400/30'],
+  attente: ['À confirmer', 'bg-or-300/10 text-or-200 ring-or-300/25'],
+  non: ['Absent', 'bg-red-500/10 text-red-300 ring-red-400/25'],
+};
+
+/* --- WhatsApp : numéro au format international + messages --- */
+function waNumber(tel) {
+  let d = String(tel || '').replace(/[^\d+]/g, '');
+  if (d.startsWith('+')) d = d.slice(1); else if (d.startsWith('00')) d = d.slice(2);
+  else if (/^6\d{8}$/.test(d)) d = '237' + d;                 // mobile camerounais sans indicatif
+  else if (/^0[67]\d{8}$/.test(d)) d = '33' + d.slice(1);     // mobile français 06 / 07
+  return d.replace(/\D/g, '');
+}
+
+const MESSAGES = [
+  { label: 'Chaleureux', build: (g, p) => [
+    `Bonjour ${g.prenom} 🤍`,
+    '',
+    `C’est avec le cœur rempli de joie que nous vous annonçons notre mariage ! Après cinq belles années, nous allons nous dire « Oui » devant Dieu, et ce serait un immense bonheur de vous avoir à nos côtés pour vivre ce moment avec nous. 💍`,
+    '',
+    `📅 *${EVENT.jour}*`,
+    `⛪ ${EVENT.benediction}`,
+    `🥂 ${EVENT.soiree}`,
+    '',
+    `🎟️ Votre billet personnel${p.pers} :`,
+    p.link,
+    `Code : *${g.code}*`,
+    p.table && `🍽️ Vous serez installé${p.e} à la table *${p.tname}* (n° ${g.table}).`,
+    '',
+    `Gardez bien ce message : le QR code de votre billet vous sera demandé à l’entrée.`,
+    '',
+    `Avec toute notre affection,`,
+    `Annie & Daniel ✨`,
+  ] },
+  { label: 'Élégant', build: (g, p) => [
+    `Bonjour ${g.prenom},`,
+    '',
+    `Annie & Daniel, ainsi que leurs familles, ont l’immense joie de vous inviter à la célébration de leur mariage, le ${EVENT.jour.toLowerCase()} à Yaoundé.`,
+    '',
+    `La bénédiction nuptiale aura lieu à 12h00 à l’Assemblée Plein Évangile de Kondengui, et sera suivie d’une soirée dansante à 20h00 à El Pathenco.`,
+    '',
+    `Votre billet nominatif${p.pers} : ${p.link}`,
+    `Code d’invitation : ${g.code}`,
+    p.table && `Votre table : ${p.tname} (n° ${g.table})`,
+    '',
+    `Votre présence sera pour nous le plus beau des cadeaux.`,
+    `Annie & Daniel`,
+  ] },
+  { label: 'Court', build: (g, p) => [
+    `${g.prenom}, vous êtes invité${p.e} à notre mariage le 12 décembre 2026 ! 🎉💍`,
+    `Votre billet${p.pers} : ${p.link}`,
+    `Code : ${g.code}${p.table ? ` · Table ${p.tname}` : ''}`,
+    `On a tellement hâte de vous voir ! Annie & Daniel 🤍`,
+  ] },
+];
+function buildMessage(g, variant) {
+  const n = g.personnes || 1;
+  const p = { link: inviteLink(g.code), pers: n > 1 ? ` (valable pour ${n} personnes)` : '', table: Boolean(g.table), tname: g.tableName || NAMES[g.table] || g.table, e: n > 1 ? 's' : '(e)' };
+  return MESSAGES[variant].build(g, p).filter((l) => l !== false && l !== null && l !== undefined)
+    .join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
+/* =====================================================================
+   Petits composants
+   ===================================================================== */
+const ICONS = {
+  home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  users: 'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M22 19v-1a4 4 0 0 0-3-3.87M16 3.13a3.5 3.5 0 0 1 0 6.75',
+  table: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  scan: 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10',
+  plus: 'M12 5v14M5 12h14',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
+  ticket: 'M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4zM13 6v12',
+  edit: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+  trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
+  download: 'M12 3v12M7 10l5 5 5-5M5 21h14',
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  chat: 'M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.5A8.5 8.5 0 1 1 21 11.5z',
+  sparkle: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6',
+  share: 'M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14',
+  check: 'M20 6 9 17l-5-5',
+  x: 'M18 6 6 18M6 6l12 12',
+  csv: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h8',
+};
+const Icon = ({ name, className = 'h-4 w-4' }) => html`
+  <svg viewBox="0 0 24 24" className=${className} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d=${ICONS[name]} /></svg>`;
+
+const btnGold = 'inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-or-500 via-or-300 to-or-500 bg-[length:200%_auto] px-5 py-2.5 text-sm font-semibold text-nuit shadow-[0_10px_30px_-12px_rgba(232,203,143,.7)] transition-all duration-500 hover:bg-right active:scale-[.98] disabled:opacity-50';
+const btnLine = 'inline-flex items-center justify-center gap-2 rounded-full border border-ivoire/15 px-4 py-2.5 text-sm font-medium text-ivoire/85 transition hover:border-or-300/50 hover:text-ivoire active:scale-[.98] disabled:opacity-40';
+const btnWa = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-semibold text-[#06251B] shadow-[0_10px_30px_-12px_rgba(37,211,102,.7)] transition hover:brightness-110 active:scale-[.98] disabled:opacity-50';
+const iconBtn = 'inline-flex h-9 w-9 items-center justify-center rounded-full text-ivoire/60 transition hover:bg-ivoire/10 hover:text-ivoire';
+const kicker = 'text-[10px] font-medium uppercase tracking-[0.3em] text-or-300/75';
+
+const Status = ({ p }) => { const [l, c] = STATUS[p] || STATUS.attente; return html`<span className=${'whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium ring-1 ' + c}>${l}</span>`; };
+const TablePill = ({ n }) => n
+  ? html`<span className="tnum inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-or-300/10 px-2.5 py-1 text-[11px] font-semibold text-or-200 ring-1 ring-or-300/25">${tableLabel(n)}</span>`
+  : html`<span className="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] text-ivoire/40 ring-1 ring-dashed ring-ivoire/15">Sans table</span>`;
+const Avatar = ({ g }) => html`
+  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emeraude-700 to-emeraude-900 font-display text-base uppercase text-or-200 ring-1 ring-or-300/25">${initials(g)}</span>`;
+
+function Modal({ onClose, children, wide }) {
   useEffect(() => {
-    if (g) return;
-    api('/api/guests?code=' + encodeURIComponent(code)).then((d) => setG(d.guest)).catch((e) => setErr(e.message));
-  }, [code]);
-  useEffect(() => {
-    if (!g) return;
-    window.renderTicket(g, g.qr).then(setImg).catch(() => setErr('Impossible de dessiner le billet.'));
-  }, [g]);
+    const k = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k); document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; };
+  }, []);
   return html`
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-emeraude-950/70 p-4" onClick=${onClose}>
-      <div className="my-6 w-full max-w-3xl rounded-3xl bg-white p-5 shadow-2xl" onClick=${(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <p className="font-display text-xl">${g ? `${g.prenom} ${g.nom}` : code}</p>
-          <button onClick=${onClose} className="rounded-full px-3 py-1 text-2xl leading-none text-emeraude-900/60 hover:bg-emeraude-50" aria-label="Fermer">×</button>
-        </div>
-        ${err && html`<p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
-        ${img ? html`<img src=${img} alt=${`Billet ${code}`} className="mx-auto w-full rounded-xl shadow ring-1 ring-or-500/40" />`
-              : !err && html`<div className="mx-auto aspect-[1820/872] w-full animate-pulse rounded-xl bg-emeraude-50"></div>`}
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <button className=${btnPrimary} disabled=${!img} onClick=${() => window.downloadUrl(img, `billet-annie-daniel-${code}.png`)}>Télécharger le billet</button>
-          <button className=${btnGhost} disabled=${!g} onClick=${() => window.downloadUrl(g.qr, `qrcode-${code}.png`)}>Télécharger le QR code</button>
-        </div>
-        ${g && html`<p className="mt-4 break-all text-center text-xs text-emeraude-900/60">Lien de l’invitation : ${location.origin}/?code=${g.code}</p>`}
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-3 backdrop-blur-sm sm:p-6" onClick=${onClose}>
+      <div className=${'pop relative my-4 w-full rounded-[28px] border border-ivoire/10 bg-nuit-800 p-5 shadow-[0_40px_120px_-30px_rgba(0,0,0,.9)] sm:p-7 ' + (wide ? 'max-w-4xl' : 'max-w-lg')} onClick=${(e) => e.stopPropagation()}>
+        <button onClick=${onClose} className=${iconBtn + ' absolute right-3 top-3'} aria-label="Fermer"><${Icon} name="x" /></button>
+        ${children}
       </div>
     </div>`;
 }
 
-/* --- Liste + recherche --- */
-function Guests({ onOpen, refresh }) {
-  const [q, setQ] = useState('');
-  const [data, setData] = useState(null);
-  const [err, setErr] = useState('');
-  const load = useCallback(async (val) => {
-    setErr('');
-    try { setData(await api('/api/guests' + (val ? '?q=' + encodeURIComponent(val) : ''))); }
-    catch (e) { setErr(e.message); }
-  }, []);
-  useEffect(() => { const t = setTimeout(() => load(q.trim()), 250); return () => clearTimeout(t); }, [q, refresh]);
+function Bar({ value, max, tone = 'gold' }) {
+  const pct = max ? Math.min(100, (value / max) * 100) : 0;
+  const c = tone === 'gold' ? 'from-or-500 to-or-200' : tone === 'green' ? 'from-emeraude-500 to-emeraude-300' : 'from-red-500 to-red-300';
+  return html`<div className="h-1.5 overflow-hidden rounded-full bg-ivoire/10"><div className=${'h-full rounded-full bg-gradient-to-r transition-all duration-700 ' + c} style=${{ width: pct + '%' }}></div></div>`;
+}
 
-  const del = async (g) => {
-    if (!confirm(`Supprimer l’invitation de ${g.prenom} ${g.nom} (${g.code}) ?`)) return;
-    try { await api('/api/guests?code=' + encodeURIComponent(g.code), { method: 'DELETE' }); load(q.trim()); }
-    catch (e) { setErr(e.message); }
+/* =====================================================================
+   Billet + partage WhatsApp
+   ===================================================================== */
+function ShareModal({ code, onClose, onChanged, toast }) {
+  const [g, setG] = useState(null);
+  const [img, setImg] = useState('');
+  const [err, setErr] = useState('');
+  const [variant, setVariant] = useState(0);
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    api('/api/guests?code=' + encodeURIComponent(code)).then((d) => setG(d.guest)).catch((e) => setErr(e.message));
+  }, [code]);
+  useEffect(() => {
+    if (!g) return;
+    setMsg(buildMessage(g, variant));
+  }, [g, variant]);
+  useEffect(() => {
+    if (!g) return;
+    window.renderTicket(g, g.qr).then(setImg).catch(() => setErr('Impossible de dessiner le billet.'));
+  }, [g]);
+
+  const markShared = async () => {
+    try { const d = await api('/api/guests', { method: 'POST', body: JSON.stringify({ action: 'shared', code }) }); setG((x) => ({ ...x, sharedAt: d.sharedAt })); onChanged(); } catch {}
   };
+  const sendWa = () => {
+    const num = waNumber(g.telephone);
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    markShared();
+  };
+  const shareImage = async () => {
+    try {
+      const blob = await (await fetch(img)).blob();
+      const file = new File([blob], `billet-annie-daniel-${code}.png`, { type: 'image/png' });
+      await navigator.share({ files: [file], text: msg });
+      markShared();
+    } catch (e) { if (e && e.name !== 'AbortError') toast('Partage impossible sur cet appareil.'); }
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(msg); toast('Message copié'); } catch { toast('Copie impossible'); }
+  };
+  const canShareFiles = typeof navigator.canShare === 'function' && window.matchMedia('(pointer: coarse)').matches;
+
+  return html`
+    <${Modal} onClose=${onClose} wide>
+      ${err && html`<p className="mb-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">${err}</p>`}
+      ${!g ? !err && html`<div className="h-64 animate-pulse rounded-2xl bg-ivoire/5"></div>` : html`
+        <div className="flex flex-wrap items-center gap-3 pr-10">
+          <${Avatar} g=${g} />
+          <div className="min-w-0">
+            <p className="font-display text-2xl leading-tight">${g.prenom} ${g.nom}</p>
+            <p className="tnum text-xs text-ivoire/50">${g.code} · ${plural(g.personnes || 1, 'personne')}${g.telephone ? ' · ' + g.telephone : ''}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:ml-auto"><${TablePill} n=${g.table} /><${Status} p=${g.presence} />
+            ${g.sharedAt && html`<span className="rounded-full bg-[#25D366]/10 px-2.5 py-1 text-[11px] text-[#7ee2a6] ring-1 ring-[#25D366]/30">Envoyé ${fmtTime(g.sharedAt)}</span>`}</div>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+          <div>
+            ${img ? html`<img src=${img} alt=${`Billet ${code}`} className="w-full rounded-2xl ring-1 ring-or-300/30" />`
+                  : html`<div className="aspect-[1820/872] w-full animate-pulse rounded-2xl bg-ivoire/5"></div>`}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className=${btnLine + ' !py-2'} disabled=${!img} onClick=${() => window.downloadUrl(img, `billet-annie-daniel-${code}.png`)}><${Icon} name="download" />Billet</button>
+              <button className=${btnLine + ' !py-2'} onClick=${() => window.downloadUrl(g.qr, `qrcode-${code}.png`)}><${Icon} name="download" />QR code</button>
+            </div>
+            <p className="mt-3 break-all text-xs text-ivoire/40">${inviteLink(g.code)}</p>
+          </div>
+
+          <div className="flex flex-col">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className=${kicker}>Message WhatsApp</p>
+              <div className="flex rounded-full border border-ivoire/10 p-0.5">
+                ${MESSAGES.map((m, i) => html`<button key=${m.label} onClick=${() => setVariant(i)}
+                  className=${'rounded-full px-3 py-1 text-[11px] transition ' + (variant === i ? 'bg-or-300 font-semibold text-nuit' : 'text-ivoire/60 hover:text-ivoire')}>${m.label}</button>`)}
+              </div>
+            </div>
+            <textarea className="field scroll-thin min-h-[16rem] flex-1 resize-y text-[13px] leading-relaxed" value=${msg} onChange=${(e) => setMsg(e.target.value)}></textarea>
+            ${!g.telephone && html`<p className="mt-2 text-xs text-or-200/80">Pas de numéro enregistré : WhatsApp vous laissera choisir le contact.</p>`}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button className=${btnWa + ' flex-1'} onClick=${sendWa}><${Icon} name="chat" />Envoyer sur WhatsApp</button>
+              ${canShareFiles && html`<button className=${btnLine} disabled=${!img} onClick=${shareImage}><${Icon} name="share" />Billet en image</button>`}
+              <button className=${btnLine} onClick=${copy}><${Icon} name="copy" />Copier</button>
+            </div>
+          </div>
+        </div>`}
+    <//>`;
+}
+
+/* =====================================================================
+   Ajout / modification d'un invité
+   ===================================================================== */
+function TableSelect({ plan, value, personnes, selfCode, onChange }) {
+  return html`
+    <select className="field" value=${value || ''} onChange=${(e) => onChange(e.target.value)}>
+      <option value="">Pas encore de table</option>
+      ${plan.list.map((t) => {
+        const mine = t.guests.filter((x) => x.code === selfCode).reduce((n, x) => n + (x.personnes || 1), 0);
+        const free = plan.seats - t.used + mine;
+        return html`<option key=${t.n} value=${t.n} disabled=${free < personnes && String(value) !== String(t.n)}>${t.n} · ${t.name} — ${free > 0 ? plural(free, 'place') + ' libre' + (free > 1 ? 's' : '') : 'complète'}</option>`;
+      })}
+    </select>`;
+}
+
+function GuestForm({ guest, plan, onClose, onSaved }) {
+  const editing = Boolean(guest);
+  const [f, setF] = useState(() => guest
+    ? { prenom: guest.prenom, nom: guest.nom, personnes: guest.personnes || 1, telephone: guest.telephone || '', table: guest.table || '', presence: guest.presence || 'attente' }
+    : { prenom: '', nom: '', personnes: 1, telephone: '', table: '', presence: 'attente' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setF({ ...f, [k]: e && e.target ? e.target.value : e });
+
+  const submit = async (e, share) => {
+    e.preventDefault(); setErr('');
+    if (!f.prenom.trim() || !f.nom.trim()) return setErr('Prénom et nom requis.');
+    setBusy(true);
+    try {
+      const body = JSON.stringify({ ...f, personnes: Number(f.personnes), table: f.table || null });
+      const d = editing
+        ? await api('/api/guests?code=' + encodeURIComponent(guest.code), { method: 'PATCH', body })
+        : await api('/api/guests', { method: 'POST', body });
+      onSaved(d.guest, !editing);
+    } catch (ex) { setErr(ex.message); setBusy(false); }
+  };
+
+  const L = ({ t, children, className = '' }) => html`<label className=${'block ' + className}><span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.18em] text-ivoire/50">${t}</span>${children}</label>`;
+  return html`
+    <${Modal} onClose=${onClose}>
+      <p className=${kicker}>${editing ? guest.code : 'Nouvel invité'}</p>
+      <h2 className="mt-2 font-display text-3xl font-light">${editing ? 'Modifier l’invitation' : 'Ajouter un invité'}</h2>
+      <form onSubmit=${submit} className="mt-6 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          ${L({ t: 'Prénom', children: html`<input className="field" value=${f.prenom} onChange=${set('prenom')} placeholder="ex. Jean" autoFocus />` })}
+          ${L({ t: 'Nom', children: html`<input className="field" value=${f.nom} onChange=${set('nom')} />` })}
+          ${L({ t: 'Téléphone WhatsApp', children: html`<input type="tel" className="field" value=${f.telephone} onChange=${set('telephone')} placeholder="6 XX XX XX XX ou +33 6…" />` })}
+          ${L({ t: 'Nombre de personnes', children: html`<select className="field" value=${f.personnes} onChange=${set('personnes')}>${PERSONNES.map(([n, l]) => html`<option key=${n} value=${n}>${l} (${n})</option>`)}</select>` })}
+          ${L({ t: 'Table', children: html`<${TableSelect} plan=${plan} value=${f.table} personnes=${Number(f.personnes)} selfCode=${guest && guest.code} onChange=${set('table')} />` })}
+          ${L({ t: 'Statut', children: html`<select className="field" value=${f.presence} onChange=${set('presence')}>${Object.entries(STATUS).map(([k, [l]]) => html`<option key=${k} value=${k}>${l}</option>`)}</select>` })}
+        </div>
+        ${err && html`<p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">${err}</p>`}
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <button type="button" className=${btnLine} onClick=${onClose}>Annuler</button>
+          <button type="submit" className=${btnGold} disabled=${busy}>${busy ? 'Enregistrement…' : editing ? 'Enregistrer' : 'Créer le billet'}</button>
+        </div>
+      </form>
+    <//>`;
+}
+
+/* =====================================================================
+   Aperçu
+   ===================================================================== */
+function Donut({ parts, size = 132 }) {
+  const total = parts.reduce((n, p) => n + p.v, 0) || 1;
+  const r = 52, C = 2 * Math.PI * r;
+  let acc = 0;
+  return html`
+    <svg viewBox="0 0 120 120" width=${size} height=${size} className="-rotate-90">
+      <circle cx="60" cy="60" r=${r} fill="none" stroke="rgba(245,239,227,.08)" strokeWidth="12" />
+      ${parts.map((p) => { const len = (p.v / total) * C; const el = html`<circle key=${p.l} cx="60" cy="60" r=${r} fill="none" stroke=${p.c} strokeWidth="12" strokeDasharray=${`${len} ${C - len}`} strokeDashoffset=${-acc} strokeLinecap="butt" />`; acc += len; return el; })}
+    </svg>`;
+}
+
+function Stat({ label, value, sub, children, delay = 0 }) {
+  return html`
+    <div className="card rise p-5" style=${{ animationDelay: delay + 'ms' }}>
+      <p className=${kicker}>${label}</p>
+      <p className="tnum mt-3 font-display text-5xl font-light leading-none text-ivoire">${value}</p>
+      ${sub && html`<p className="mt-2 text-xs text-ivoire/50">${sub}</p>`}
+      ${children && html`<div className="mt-4">${children}</div>`}
+    </div>`;
+}
+
+function Overview({ data, go }) {
+  const t = data.total, plan = data.plan;
+  const days = Math.max(0, Math.ceil((new Date(EVENT.date) - new Date()) / 864e5));
+  const full = plan.list.filter((x) => x.used >= plan.seats).length;
+  const todo = [
+    t.sansTable > 0 && { l: `${plural(t.sansTable, 'personne')} sans table`, a: () => go('guests', 'notable'), icon: 'table' },
+    t.invitations - t.envoyes > 0 && { l: `${plural(t.invitations - t.envoyes, 'invitation')} pas encore envoyée${t.invitations - t.envoyes > 1 ? 's' : ''}`, a: () => go('guests', 'unsent'), icon: 'chat' },
+    t.attente > 0 && { l: `${plural(t.attente, 'invitation')} à confirmer`, a: () => go('guests', 'attente'), icon: 'users' },
+  ].filter(Boolean);
+  return html`
+    <div className="space-y-6">
+      <div className="card rise relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emeraude-500/20 blur-3xl"></div>
+        <p className=${kicker}>Tableau de bord</p>
+        <h1 className="mt-3 font-display text-4xl font-light leading-tight sm:text-5xl">Plus que <span className="gold-text italic tnum">${days} jours</span><br className="sm:hidden" /> avant le grand « Oui »</h1>
+        <p className="mt-3 text-sm text-ivoire/55">${EVENT.jour} · Kondengui, Yaoundé</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <${Stat} label="Personnes attendues" value=${t.personnes} sub=${`sur ${t.capacite} places · ${plural(t.invitations, 'invitation')}`} delay=${60}><${Bar} value=${t.personnes} max=${t.capacite} /><//>
+        <${Stat} label="Placées à table" value=${t.places} sub=${`${t.sansTable} sans table · ${full}/${plan.tables} tables complètes`} delay=${120}><${Bar} value=${t.places} max=${t.personnes} tone="green" /><//>
+        <${Stat} label="Invitations envoyées" value=${t.envoyes} sub=${`sur ${t.invitations} via WhatsApp`} delay=${180}><${Bar} value=${t.envoyes} max=${t.invitations} tone="green" /><//>
+        <${Stat} label="Arrivés le jour J" value=${t.arrives} sub="scannés à l’entrée" delay=${240}><${Bar} value=${t.arrives} max=${t.invitations} /><//>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+        <div className="card rise p-6" style=${{ animationDelay: '300ms' }}>
+          <p className=${kicker}>Réponses</p>
+          <div className="mt-5 flex items-center gap-6">
+            <div className="relative">
+              <${Donut} parts=${[{ l: 'oui', v: t.confirmes, c: '#3FA382' }, { l: 'attente', v: t.attente, c: '#E8CB8F' }, { l: 'non', v: t.absents, c: '#F87171' }]} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="tnum font-display text-3xl">${t.invitations}</span><span className="text-[10px] uppercase tracking-widest text-ivoire/45">invitations</span></div>
+            </div>
+            <ul className="space-y-3 text-sm">
+              ${[['Confirmées', t.confirmes, 'bg-emeraude-400'], ['À confirmer', t.attente, 'bg-or-300'], ['Absents', t.absents, 'bg-red-400']].map(([l, v, c]) => html`
+                <li key=${l} className="flex items-center gap-3"><span className=${'h-2.5 w-2.5 rounded-full ' + c}></span><span className="text-ivoire/70">${l}</span><span className="tnum ml-auto font-semibold">${v}</span></li>`)}
+            </ul>
+          </div>
+        </div>
+
+        <div className="card rise p-6" style=${{ animationDelay: '360ms' }}>
+          <div className="flex items-center justify-between"><p className=${kicker}>À faire</p><button className="text-xs text-or-200 hover:underline" onClick=${() => go('tables')}>Plan de table →</button></div>
+          ${todo.length
+            ? html`<ul className="mt-4 space-y-2">${todo.map((x) => html`
+                <li key=${x.l}><button onClick=${x.a} className="flex w-full items-center gap-3 rounded-2xl border border-ivoire/5 bg-ivoire/[0.03] px-4 py-3 text-left text-sm transition hover:border-or-300/30 hover:bg-or-300/5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-or-300/10 text-or-200"><${Icon} name=${x.icon} /></span>${x.l}<span className="ml-auto text-ivoire/40">→</span></button></li>`)}</ul>`
+            : html`<p className="mt-6 text-sm text-ivoire/60">Tout est prêt : chaque invité a sa table et son invitation. ✨</p>`}
+          <div className="mt-5 grid grid-cols-10 gap-1.5">
+            ${plan.list.map((x) => html`<button key=${x.n} title=${`Table ${x.n} : ${x.used}/${plan.seats}`} onClick=${() => go('tables')}
+              className=${'tnum aspect-square rounded-md text-[9px] transition hover:scale-110 ' + (x.used >= plan.seats ? 'bg-or-300 text-nuit' : x.used ? 'bg-emeraude-600/70 text-ivoire' : 'bg-ivoire/[0.06] text-ivoire/40')}>${x.n}</button>`)}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* =====================================================================
+   Liste des invités
+   ===================================================================== */
+const FILTERS = [
+  ['all', 'Tous', () => true],
+  ['notable', 'Sans table', (g) => !g.table && g.presence !== 'non'],
+  ['unsent', 'Non envoyés', (g) => !g.sharedAt],
+  ['oui', 'Confirmés', (g) => g.presence === 'oui'],
+  ['attente', 'À confirmer', (g) => g.presence === 'attente'],
+  ['non', 'Absents', (g) => g.presence === 'non'],
+  ['arrived', 'Arrivés', (g) => g.checkedInAt],
+];
+
+function Guests({ data, filter, setFilter, onShare, onEdit, onDelete, toast }) {
+  const [q, setQ] = useState('');
+  const terms = fold(q).split(' ').filter(Boolean);
+  const pass = (FILTERS.find((f) => f[0] === filter) || FILTERS[0])[2];
+  const list = data.guests.filter((g) => pass(g) && terms.every((t) => [g.prenom, g.nom, g.code, g.telephone].some((v) => fold(v).includes(t))));
   const csv = async () => {
     const res = await fetch('/api/guests?format=csv', { headers: { 'x-admin-key': getKey() } });
-    if (!res.ok) return setErr('Export impossible.');
+    if (!res.ok) return toast('Export impossible.');
     window.downloadUrl(URL.createObjectURL(await res.blob()), 'invites-annie-daniel.csv');
   };
-
-  const t = data && data.total;
   return html`
-    <div>
-      ${t && html`
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          ${[['Invitations', t.reponses], ['Présents', t.presents], ['En attente', t.attente], ['Personnes', t.personnes], ['Arrivés', t.arrives]].map(([l, v]) => html`
-            <div key=${l} className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs text-emeraude-900/60">${l}</p><p className="text-2xl font-semibold">${v}</p></div>`)}
-        </div>`}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <input className=${inputCls} value=${q} onChange=${(e) => setQ(e.target.value)} placeholder="Rechercher par nom, prénom, code (AD-XXXXXX) ou e-mail" />
-        <button className=${btnGhost + ' shrink-0'} onClick=${csv}>Export CSV</button>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <label className="relative flex-1">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ivoire/40"><${Icon} name="search" /></span>
+          <input className="field !pl-11" value=${q} onChange=${(e) => setQ(e.target.value)} placeholder="Rechercher un nom, un code ou un téléphone" />
+        </label>
+        <button className=${btnLine + ' shrink-0'} onClick=${csv}><${Icon} name="csv" />Export Excel</button>
       </div>
-      ${err && html`<p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
-      ${data && !data.guests.length && html`<p className="py-10 text-center text-sm text-emeraude-900/60">Aucune invitation trouvée.</p>`}
+      <div className="scroll-thin -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        ${FILTERS.map(([k, l, fn]) => html`<button key=${k} onClick=${() => setFilter(k)}
+          className=${'shrink-0 rounded-full px-3.5 py-1.5 text-xs transition ' + (filter === k ? 'bg-or-300 font-semibold text-nuit' : 'border border-ivoire/10 text-ivoire/65 hover:text-ivoire')}>${l} <span className="tnum opacity-60">${data.guests.filter(fn).length}</span></button>`)}
+      </div>
+
+      ${!list.length && html`<div className="card py-16 text-center text-sm text-ivoire/50">Aucun invité ne correspond.</div>`}
       <ul className="space-y-2">
-        ${data && data.guests.map((g) => html`
-          <li key=${g.code} className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">${g.prenom} ${g.nom} <span className="font-normal text-emeraude-900/60">· ${g.personnes || 0} pers.</span></p>
-              <p className="text-xs text-emeraude-900/60">${g.code}${g.email ? ' · ' + g.email : ''}${g.telephone ? ' · ' + g.telephone : ''}</p>
+        ${list.map((g, i) => html`
+          <li key=${g.code} className="card rise flex flex-wrap items-center gap-3 !rounded-2xl p-3 pr-2 sm:flex-nowrap sm:p-4" style=${{ animationDelay: Math.min(i, 12) * 25 + 'ms' }}>
+            <${Avatar} g=${g} />
+            <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-auto">
+              <p className="truncate font-medium">${g.prenom} ${g.nom} <span className="font-normal text-ivoire/45">· ${g.personnes || 1} pers.</span></p>
+              <p className="tnum truncate text-xs text-ivoire/45">${g.code}${g.telephone ? ' · ' + g.telephone : ''}</p>
             </div>
-            <span className=${'rounded-full px-3 py-1 text-xs font-medium ' + (STATUS[g.presence] || STATUS.attente)[1]}>${(STATUS[g.presence] || STATUS.attente)[0]}</span>
-            ${g.checkedInAt && html`<span className="rounded-full bg-emeraude-900 px-3 py-1 text-xs font-medium text-white">Arrivé ${fmtTime(g.checkedInAt)}</span>`}
-            <div className="flex gap-2">
-              <button className=${btnGhost + ' !px-4 !py-1.5'} onClick=${() => onOpen(g.code)}>Billet</button>
-              <button className="rounded-full px-3 py-1.5 text-sm text-red-700 hover:bg-red-50" onClick=${() => del(g)}>Supprimer</button>
+            <div className="flex flex-wrap items-center gap-1.5 pl-[52px] sm:pl-0">
+              <${TablePill} n=${g.table} /><${Status} p=${g.presence} />
+              ${g.checkedInAt && html`<span className="rounded-full bg-emeraude-500 px-2.5 py-1 text-[11px] font-medium text-white">Arrivé ${fmtTime(g.checkedInAt)}</span>`}
+            </div>
+            <div className="ml-auto flex items-center">
+              <button onClick=${() => onShare(g.code)} title=${g.sharedAt ? 'Déjà envoyé — renvoyer' : 'Envoyer sur WhatsApp'}
+                className=${'mr-1 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ' + (g.sharedAt ? 'bg-[#25D366]/10 text-[#7ee2a6] ring-1 ring-[#25D366]/25 hover:bg-[#25D366]/20' : 'bg-[#25D366] text-[#06251B] hover:brightness-110')}>
+                <${Icon} name=${g.sharedAt ? 'check' : 'chat'} />${g.sharedAt ? 'Envoyé' : 'WhatsApp'}</button>
+              <button className=${iconBtn} title="Modifier" onClick=${() => onEdit(g)}><${Icon} name="edit" /></button>
+              <button className=${iconBtn + ' hover:!text-red-300'} title="Supprimer" onClick=${() => onDelete(g)}><${Icon} name="trash" /></button>
             </div>
           </li>`)}
       </ul>
     </div>`;
 }
 
-/* --- Nouvelle invitation --- */
-function Create({ onCreated }) {
-  const empty = { prenom: '', nom: '', personnes: 1, telephone: '' };
-  const [f, setF] = useState(empty);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const submit = async (e) => {
-    e.preventDefault(); setErr('');
-    if (!f.prenom.trim() || !f.nom.trim()) return setErr('Prénom et nom requis.');
-    setBusy(true);
-    try { const d = await api('/api/guests', { method: 'POST', body: JSON.stringify(f) }); setF(empty); onCreated(d.guest); }
-    catch (ex) { setErr(ex.message); }
-    finally { setBusy(false); }
-  };
-  return html`
-    <form onSubmit=${submit} className="mx-auto max-w-xl space-y-4 rounded-3xl bg-white p-6 shadow-sm">
-      <p className="text-sm text-emeraude-900/70">Le billet (avec le nom et le QR code) est créé et enregistré immédiatement. Téléchargez-le ensuite pour l’envoyer à l’invité (WhatsApp, etc.).</p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block"><span className="mb-1 block text-sm font-medium">Prénom</span><input className=${inputCls} value=${f.prenom} onChange=${set('prenom')} required /></label>
-        <label className="block"><span className="mb-1 block text-sm font-medium">Nom</span><input className=${inputCls} value=${f.nom} onChange=${set('nom')} required /></label>
-        <label className="block"><span className="mb-1 block text-sm font-medium">Nombre de personnes</span>
-          <select className=${inputCls} value=${f.personnes} onChange=${set('personnes')}>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => html`<option key=${n} value=${n}>${n}</option>`)}</select></label>
-        <label className="block"><span className="mb-1 block text-sm font-medium">Téléphone (facultatif)</span><input type="tel" className=${inputCls} value=${f.telephone} onChange=${set('telephone')} /></label>
-      </div>
-      ${err && html`<p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${err}</p>`}
-      <div className="text-center"><button type="submit" className=${btnPrimary} disabled=${busy}>${busy ? 'Création…' : 'Créer le billet'}</button></div>
-    </form>`;
+/* =====================================================================
+   Plan de table
+   ===================================================================== */
+function Seats({ used, seats }) {
+  return html`<div className="flex gap-1">${Array.from({ length: seats }, (_, i) => html`<span key=${i} className=${'h-2 flex-1 rounded-full ' + (i < used ? 'bg-gradient-to-r from-or-400 to-or-200' : 'bg-ivoire/10')}></span>`)}</div>`;
 }
 
-/* --- Scanner à l'entrée --- */
+function TableModal({ n, data, onClose, assign, onShare, rename }) {
+  const plan = data.plan, t = plan.list[n - 1];
+  const free = plan.seats - t.used;
+  const [name, setName] = useState(t.name);
+  const [editing, setEditing] = useState(false);
+  const [pick, setPick] = useState('');
+  const [busy, setBusy] = useState(false);
+  const candidates = data.guests.filter((g) => !g.table && g.presence !== 'non' && (g.personnes || 1) <= free);
+  const run = async (code, table) => { setBusy(true); await assign(code, table); setBusy(false); setPick(''); };
+  return html`
+    <${Modal} onClose=${onClose}>
+      <p className=${kicker}>Plan de table</p>
+      <div className="mt-2 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="tnum text-xs text-ivoire/50">Table n° ${n}</p>
+          ${editing
+            ? html`<form className="mt-1 flex gap-2" onSubmit=${async (e) => { e.preventDefault(); setBusy(true); if (await rename(n, name)) setEditing(false); setBusy(false); }}>
+                <input className="field !py-2 font-display !text-2xl" value=${name} maxLength="40" onChange=${(e) => setName(e.target.value)} autoFocus />
+                <button className=${btnGold + ' shrink-0 !px-4'} disabled=${busy}>OK</button></form>`
+            : html`<h2 className="mt-1 flex items-center gap-2 font-display text-4xl font-light"><span className="gold-text truncate">${t.name}</span>
+                <button className=${iconBtn} title="Renommer la table" onClick=${() => { setName(t.name); setEditing(true); }}><${Icon} name="edit" /></button></h2>`}
+          ${editing && html`<p className="mt-1 text-xs text-ivoire/40">Laissez vide pour revenir au nom par défaut.</p>`}
+        </div>
+        <p className="tnum shrink-0 pb-1 text-sm text-ivoire/60">${t.used}/${plan.seats} places</p>
+      </div>
+      <div className="mt-4"><${Seats} used=${t.used} seats=${plan.seats} /></div>
+      <ul className="mt-6 space-y-2">
+        ${!t.guests.length && html`<li className="rounded-2xl border border-dashed border-ivoire/10 px-4 py-6 text-center text-sm text-ivoire/45">Personne à cette table pour l’instant.</li>`}
+        ${t.guests.map((g) => html`
+          <li key=${g.code} className="flex items-center gap-3 rounded-2xl bg-ivoire/[0.04] px-3 py-2.5">
+            <${Avatar} g=${g} />
+            <button className="min-w-0 flex-1 text-left" onClick=${() => onShare(g.code)}>
+              <p className="truncate text-sm font-medium">${g.prenom} ${g.nom}</p>
+              <p className="text-xs text-ivoire/45">${plural(g.personnes || 1, 'personne')} · ${g.code}</p>
+            </button>
+            <button className="rounded-full px-3 py-1.5 text-xs text-ivoire/60 hover:bg-red-500/10 hover:text-red-300" disabled=${busy} onClick=${() => run(g.code, null)}>Retirer</button>
+          </li>`)}
+      </ul>
+      ${free > 0 && html`
+        <div className="mt-6 border-t border-ivoire/10 pt-5">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-ivoire/50">Placer un invité (${plural(free, 'place')} libre${free > 1 ? 's' : ''})</p>
+          ${candidates.length ? html`
+            <div className="flex gap-2">
+              <select className="field" value=${pick} onChange=${(e) => setPick(e.target.value)}>
+                <option value="">Choisir un invité sans table…</option>
+                ${candidates.map((g) => html`<option key=${g.code} value=${g.code}>${g.prenom} ${g.nom} (${g.personnes || 1})</option>`)}
+              </select>
+              <button className=${btnGold + ' shrink-0'} disabled=${!pick || busy} onClick=${() => run(pick, n)}>Placer</button>
+            </div>`
+          : html`<p className="text-sm text-ivoire/45">Aucun invité sans table ne rentre dans les places restantes.</p>`}
+        </div>`}
+    <//>`;
+}
+
+function Tables({ data, onOpen }) {
+  const plan = data.plan;
+  const [show, setShow] = useState('all');
+  const list = plan.list.filter((t) => show === 'all' || (show === 'free' ? t.used < plan.seats : t.used >= plan.seats));
+  return html`
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ivoire/60"><span className="tnum font-semibold text-ivoire">${plan.tables}</span> tables de <span className="tnum font-semibold text-ivoire">${plan.seats}</span> places · <span className="tnum">${data.total.places}/${plan.tables * plan.seats}</span> places occupées</p>
+        <div className="flex rounded-full border border-ivoire/10 p-0.5">
+          ${[['all', 'Toutes'], ['free', 'Places libres'], ['full', 'Complètes']].map(([k, l]) => html`<button key=${k} onClick=${() => setShow(k)}
+            className=${'rounded-full px-3 py-1 text-xs transition ' + (show === k ? 'bg-or-300 font-semibold text-nuit' : 'text-ivoire/60 hover:text-ivoire')}>${l}</button>`)}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        ${list.map((t, i) => {
+          const full = t.used >= plan.seats;
+          return html`
+            <button key=${t.n} onClick=${() => onOpen(t.n)} style=${{ animationDelay: Math.min(i, 20) * 20 + 'ms' }}
+              className=${'card rise group flex min-h-[10.5rem] flex-col p-4 text-left transition duration-300 hover:-translate-y-0.5 hover:border-or-300/40 ' + (full ? '!border-or-300/30 !bg-or-300/[0.06]' : '')}>
+              <div className="flex items-baseline justify-between">
+                <span className="tnum text-[10px] uppercase tracking-[0.25em] text-ivoire/45">Table ${t.n}</span>
+                <span className=${'tnum text-xs ' + (full ? 'font-semibold text-or-200' : 'text-ivoire/50')}>${full ? 'Complète' : `${t.used}/${plan.seats}`}</span>
+              </div>
+              <span className="mt-1 truncate font-display text-[1.7rem] font-light leading-tight text-ivoire">${t.name}</span>
+              <div className="mt-3"><${Seats} used=${t.used} seats=${plan.seats} /></div>
+              <ul className="mt-3 space-y-0.5 text-xs text-ivoire/60">
+                ${t.guests.slice(0, 3).map((g) => html`<li key=${g.code} className="truncate">${g.prenom} ${g.nom}${(g.personnes || 1) > 1 ? ` ×${g.personnes}` : ''}</li>`)}
+                ${t.guests.length > 3 && html`<li className="text-ivoire/40">+ ${t.guests.length - 3} autre${t.guests.length - 3 > 1 ? 's' : ''}</li>`}
+                ${!t.guests.length && html`<li className="text-ivoire/30 group-hover:text-or-200/70">+ Placer des invités</li>`}
+              </ul>
+            </button>`;
+        })}
+      </div>
+    </div>`;
+}
+
+/* =====================================================================
+   Import Excel : Nom, Prénom, Téléphone (facultatif), Nombre de personnes (1 ou 2), Statut
+   ===================================================================== */
+const COLS = { nom: ['nom', 'name', 'lastname'], prenom: ['prenom', 'prenoms', 'firstname'], telephone: ['telephone', 'tel', 'phone', 'portable', 'whatsapp', 'numero'],
+  personnes: ['nombredepersonnes', 'nombredepersonne', 'nombre', 'personnes', 'personne', 'nb', 'nbpersonnes'], presence: ['statut', 'status', 'presence'] };
+const ORDER = ['nom', 'prenom', 'telephone', 'personnes', 'presence'];
+const STATUT_IN = { oui: 'oui', confirme: 'oui', confirmee: 'oui', present: 'oui', presente: 'oui', non: 'non', absent: 'non', absente: 'non',
+  attente: 'attente', enattente: 'attente', aconfirmer: 'attente', invite: 'attente', invitee: 'attente', '': 'attente' };
+const key = (v) => fold(v).replace(/[^a-z]/g, '');
+
+function parseSheet(aoa, existing) {
+  const rows = aoa.filter((r) => r && r.some((c) => String(c ?? '').trim() !== ''));
+  if (!rows.length) return [];
+  // En-têtes reconnus ? sinon on suppose l'ordre Nom, Prénom, Téléphone, Nombre, Statut
+  const head = rows[0].map(key);
+  const idx = {};
+  ORDER.forEach((f) => { const i = head.findIndex((h) => COLS[f].includes(h)); if (i >= 0) idx[f] = i; });
+  const hasHeader = idx.nom !== undefined && idx.prenom !== undefined;
+  if (!hasHeader) ORDER.forEach((f, i) => { idx[f] = i; });
+  const seen = new Set(existing.map((g) => fold(g.prenom + ' ' + g.nom).trim()));
+  return rows.slice(hasHeader ? 1 : 0).map((r, i) => {
+    const get = (f) => (idx[f] === undefined ? '' : String(r[idx[f]] ?? '').trim());
+    const raw = fold(get('personnes')).replace(/[^a-z0-9]/g, '');
+    const personnes = raw === '' || raw === '1' || raw === 'seul' || raw === 'seule' ? 1 : raw === '2' || raw === 'couple' || raw === 'encouple' ? 2 : NaN;
+    const st = key(get('presence'));
+    const row = { line: i + (hasHeader ? 2 : 1), nom: get('nom'), prenom: get('prenom'), telephone: get('telephone'), personnes, presence: STATUT_IN[st] };
+    const errs = [];
+    if (!row.nom || !row.prenom) errs.push('nom ou prénom manquant');
+    if (!personnes) errs.push(`« ${get('personnes')} » : mettez 1 ou 2`);
+    if (!row.presence) errs.push(`statut « ${get('presence')} » inconnu`);
+    const k = fold(row.prenom + ' ' + row.nom).trim();
+    if (!errs.length && seen.has(k)) errs.push('déjà dans la liste');
+    if (!errs.length) seen.add(k);
+    return { ...row, errs };
+  });
+}
+
+function ImportModal({ onClose, onDone }) {
+  const [rows, setRows] = useState(null);
+  const [file, setFile] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+  const [drag, setDrag] = useState(false);
+  const input = useRef(null);
+
+  const read = async (f) => {
+    if (!f) return;
+    setErr(''); setResult(null); setFile(f.name);
+    try {
+      if (!window.XLSX) throw new Error('Lecteur Excel indisponible (connexion ?).');
+      const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+      const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: '' });
+      const { guests } = await api('/api/guests');
+      const parsed = parseSheet(aoa, guests);
+      if (!parsed.length) throw new Error('Le fichier est vide.');
+      setRows(parsed);
+    } catch (e) { setRows(null); setErr(e.message || 'Fichier illisible.'); }
+  };
+  const template = () => {
+    const ws = XLSX.utils.aoa_to_sheet([['Nom', 'Prénom', 'Téléphone', 'Nombre de personnes', 'Statut'], ['Mfonzie', 'Jean', '699112233', 2, 'Confirmé'], ['Ndam', 'Awa', '', 1, 'À confirmer']]);
+    ws['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Invités');
+    XLSX.writeFile(wb, 'modele-invites-annie-daniel.xlsx');
+  };
+  const good = rows ? rows.filter((r) => !r.errs.length) : [];
+  const bad = rows ? rows.filter((r) => r.errs.length) : [];
+  const send = async () => {
+    setBusy(true); setErr('');
+    try {
+      const d = await api('/api/guests', { method: 'POST', body: JSON.stringify({ action: 'import', rows: good.map(({ errs, ...r }) => r) }) });
+      setResult(d); onDone(d.created);
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return html`
+    <${Modal} onClose=${onClose} wide>
+      <p className=${kicker}>Import en masse</p>
+      <h2 className="mt-2 font-display text-3xl font-light">Importer des invités depuis Excel</h2>
+      <p className="mt-2 text-sm text-ivoire/55">Colonnes : <strong className="text-ivoire/80">Nom, Prénom, Téléphone</strong> (facultatif), <strong className="text-ivoire/80">Nombre de personnes</strong> (1 = seul, 2 = couple), <strong className="text-ivoire/80">Statut</strong> (Confirmé, À confirmer ou Absent). Les codes et QR codes sont créés automatiquement.</p>
+
+      ${result ? html`
+        <div className="mt-6 rounded-3xl border border-emeraude-400/30 bg-emeraude-400/10 p-6 text-center">
+          <p className="font-display text-5xl text-emeraude-300 tnum">${result.created}</p>
+          <p className="mt-1 text-sm text-ivoire/70">${result.created > 1 ? 'invités importés' : 'invité importé'}${result.skipped.length ? ` · ${result.skipped.length} ignoré(s)` : ''}</p>
+          ${result.skipped.length > 0 && html`<ul className="mt-3 text-xs text-or-200/80">${result.skipped.map((x) => html`<li key=${x.line}>Ligne ${x.line} : ${x.reason}</li>`)}</ul>`}
+          <button className=${btnGold + ' mt-5'} onClick=${onClose}>Terminer</button>
+        </div>`
+      : html`
+        <div onClick=${() => input.current.click()} onDragOver=${(e) => { e.preventDefault(); setDrag(true); }} onDragLeave=${() => setDrag(false)}
+          onDrop=${(e) => { e.preventDefault(); setDrag(false); read(e.dataTransfer.files[0]); }}
+          className=${'mt-6 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed px-6 py-8 text-center transition ' + (drag ? 'border-or-300 bg-or-300/10' : 'border-ivoire/15 hover:border-or-300/50')}>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-or-300/10 text-or-200"><${Icon} name="csv" className="h-6 w-6" /></span>
+          <p className="text-sm">${file || 'Déposez votre fichier ici ou cliquez pour le choisir'}</p>
+          <p className="text-xs text-ivoire/40">.xlsx, .xls ou .csv</p>
+          <input ref=${input} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange=${(e) => { read(e.target.files[0]); e.target.value = ''; }} />
+        </div>
+        <p className="mt-3 text-center"><button className="text-xs text-or-200 underline" onClick=${template}>Télécharger le modèle Excel</button></p>
+
+        ${rows && html`
+          <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-full bg-emeraude-400/15 px-3 py-1 text-emeraude-300 ring-1 ring-emeraude-400/30">${plural(good.length, 'ligne')} prête${good.length > 1 ? 's' : ''}</span>
+            ${bad.length > 0 && html`<span className="rounded-full bg-red-500/10 px-3 py-1 text-red-300 ring-1 ring-red-400/25">${plural(bad.length, 'ligne')} à corriger (ignorée${bad.length > 1 ? 's' : ''})</span>`}
+            <span className="ml-auto text-ivoire/50">${good.reduce((n, r) => n + r.personnes, 0)} personnes</span>
+          </div>
+          <div className="scroll-thin mt-3 max-h-[45vh] overflow-auto rounded-2xl border border-ivoire/10">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-nuit-700 text-[10px] uppercase tracking-widest text-ivoire/50">
+                <tr>${['Ligne', 'Nom', 'Prénom', 'Téléphone', 'Pers.', 'Statut', ''].map((h) => html`<th key=${h} className="px-3 py-2 font-medium">${h}</th>`)}</tr>
+              </thead>
+              <tbody>
+                ${rows.map((r) => html`
+                  <tr key=${r.line} className=${'border-t border-ivoire/5 ' + (r.errs.length ? 'bg-red-500/[0.07]' : '')}>
+                    <td className="tnum px-3 py-2 text-ivoire/40">${r.line}</td>
+                    <td className="px-3 py-2">${r.nom}</td><td className="px-3 py-2">${r.prenom}</td>
+                    <td className="tnum px-3 py-2 text-ivoire/60">${r.telephone}</td>
+                    <td className="px-3 py-2">${r.personnes === 2 ? 'Couple' : r.personnes === 1 ? 'Seul(e)' : '—'}</td>
+                    <td className="px-3 py-2">${r.presence ? html`<${Status} p=${r.presence} />` : '—'}</td>
+                    <td className="px-3 py-2 text-red-300">${r.errs.join(', ')}</td>
+                  </tr>`)}
+              </tbody>
+            </table>
+          </div>`}
+        ${err && html`<p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">${err}</p>`}
+        <div className="mt-5 flex justify-end gap-2">
+          <button className=${btnLine} onClick=${onClose}>Annuler</button>
+          <button className=${btnGold} disabled=${!good.length || busy} onClick=${send}>${busy ? 'Import en cours…' : `Importer ${plural(good.length, 'invité')}`}</button>
+        </div>`}
+    <//>`;
+}
+
+/* =====================================================================
+   Scanner à l'entrée
+   ===================================================================== */
 function Scanner() {
   const video = useRef(null);
   const [on, setOn] = useState(false);
@@ -230,36 +791,41 @@ function Scanner() {
 
   const next = () => { setResult(null); lock.current = false; };
   const g = result && result.guest;
-  const tone = result && (result.error ? 'bg-red-600' : result.alreadyCheckedIn ? 'bg-amber-500' : 'bg-emeraude-700');
+  const tone = result && (result.error ? 'bg-red-600' : result.alreadyCheckedIn ? 'bg-amber-500' : 'bg-emeraude-600');
 
   return html`
     <div className="mx-auto max-w-md">
-      <div className="relative overflow-hidden rounded-3xl bg-emeraude-950 shadow">
+      <div className="relative overflow-hidden rounded-[28px] border border-ivoire/10 bg-black shadow-2xl">
         <video ref=${video} playsInline muted className=${'aspect-square w-full object-cover ' + (on ? '' : 'hidden')}></video>
-        ${!on && html`<div className="flex aspect-square items-center justify-center p-6 text-center">
-          <button className=${btnPrimary} onClick=${() => { setCamErr(''); setOn(true); }}>Activer la caméra</button></div>`}
-        ${on && !result && html`<div className="pointer-events-none absolute inset-[18%] rounded-2xl border-4 border-or-300/80"></div>`}
+        ${!on && html`<div className="flex aspect-square flex-col items-center justify-center gap-5 p-6 text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-or-300/10 text-or-200 ring-1 ring-or-300/30"><${Icon} name="scan" className="h-7 w-7" /></span>
+          <p className="max-w-xs text-sm text-ivoire/60">Scannez le QR code du billet à l’entrée pour accueillir l’invité et lui indiquer sa table.</p>
+          <button className=${btnGold} onClick=${() => { setCamErr(''); setOn(true); }}>Activer la caméra</button></div>`}
+        ${on && !result && html`<div className="pointer-events-none absolute inset-[18%] rounded-3xl border-2 border-or-300/80 shadow-[0_0_0_999px_rgba(0,0,0,.35)]"></div>`}
         ${result && html`
           <div className=${'absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white ' + tone}>
             ${result.error ? html`<p className="text-2xl font-semibold">✕ ${result.error}</p>` : html`
-              <p className="text-sm uppercase tracking-widest opacity-80">${result.alreadyCheckedIn ? 'Déjà scanné' : 'Bienvenue'}</p>
-              <p className="mt-2 font-display text-3xl">${g.prenom} ${g.nom}</p>
-              <p className="mt-2 text-lg">${g.personnes || 1} personne${(g.personnes || 1) > 1 ? 's' : ''} · ${g.code}</p>
-              ${result.alreadyCheckedIn && html`<p className="mt-2 text-sm">Entré(e) le ${fmtTime(g.checkedInAt)}</p>`}
-              ${g.presence === 'non' && html`<p className="mt-2 text-sm font-semibold">⚠ A répondu « absent »</p>`}`}
-            <button className="mt-6 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-emeraude-950" onClick=${next}>Scanner le suivant</button>
+              <p className="text-xs uppercase tracking-[0.3em] opacity-80">${result.alreadyCheckedIn ? 'Déjà scanné' : 'Bienvenue'}</p>
+              <p className="mt-2 font-display text-4xl">${g.prenom} ${g.nom}</p>
+              <p className="mt-1 text-base opacity-90">${plural(g.personnes || 1, 'personne')} · ${g.code}</p>
+              <div className="mt-5 rounded-3xl bg-white/15 px-8 py-3"><p className="tnum text-[10px] uppercase tracking-[0.3em] opacity-80">${g.table ? `Table n° ${g.table}` : 'Table'}</p><p className="font-display text-5xl leading-tight">${g.table ? (g.tableName || NAMES[g.table]) : '—'}</p></div>
+              ${result.alreadyCheckedIn && html`<p className="mt-3 text-sm">Entré(e) le ${fmtTime(g.checkedInAt)}</p>`}
+              ${g.presence === 'non' && html`<p className="mt-2 text-sm font-semibold">⚠ Noté « absent »</p>`}`}
+            <button className="mt-6 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-nuit" onClick=${next}>Scanner le suivant</button>
           </div>`}
       </div>
-      ${camErr && html`<p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">${camErr}</p>`}
+      ${camErr && html`<p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">${camErr}</p>`}
       <form className="mt-4 flex gap-2" onSubmit=${(e) => { e.preventDefault(); if (manual.trim()) { check(manual); setManual(''); } }}>
-        <input className=${inputCls} value=${manual} onChange=${(e) => setManual(e.target.value)} placeholder="Ou saisir le code AD-XXXXXX" />
-        <button className=${btnGhost + ' shrink-0'}>Valider</button>
+        <input className="field uppercase placeholder:normal-case" value=${manual} onChange=${(e) => setManual(e.target.value)} placeholder="Ou saisir le code AD-XXXXXX" />
+        <button className=${btnLine + ' shrink-0'}>Valider</button>
       </form>
-      ${on && html`<p className="mt-3 text-center"><button className="text-sm text-emeraude-700 underline" onClick=${() => setOn(false)}>Arrêter la caméra</button></p>`}
+      ${on && html`<p className="mt-3 text-center"><button className="text-sm text-or-200 underline" onClick=${() => setOn(false)}>Arrêter la caméra</button></p>`}
     </div>`;
 }
 
-/* --- Connexion + onglets --- */
+/* =====================================================================
+   Connexion + application
+   ===================================================================== */
 function Login({ onOk }) {
   const [k, setK] = useState('');
   const [err, setErr] = useState('');
@@ -269,36 +835,106 @@ function Login({ onOk }) {
     catch (ex) { setKey(''); setErr(ex.status === 401 ? 'Clé incorrecte.' : ex.message); }
   };
   return html`
-    <form onSubmit=${submit} className="mx-auto mt-24 max-w-sm space-y-4 rounded-3xl bg-white p-8 text-center shadow">
-      <p className="font-script text-5xl text-emeraude-900">Annie & Daniel</p>
-      <p className="text-sm text-emeraude-900/70">Espace administrateur</p>
-      <input type="password" className=${inputCls} value=${k} onChange=${(e) => setK(e.target.value)} placeholder="Clé admin" autoFocus />
-      ${err && html`<p className="text-sm text-red-700">${err}</p>`}
-      <button className=${btnPrimary}>Entrer</button>
-    </form>`;
+    <div className="bg-app flex min-h-screen items-center justify-center p-4">
+      <form onSubmit=${submit} className="card pop w-full max-w-sm space-y-5 p-8 text-center">
+        <p className="font-script text-6xl text-or-200">Annie & Daniel</p>
+        <p className=${kicker}>Espace des mariés</p>
+        <input type="password" className="field text-center" value=${k} onChange=${(e) => setK(e.target.value)} placeholder="Clé admin" autoFocus />
+        ${err && html`<p className="text-sm text-red-300">${err}</p>`}
+        <button className=${btnGold + ' w-full'}>Entrer</button>
+      </form>
+    </div>`;
 }
+
+const NAV = [['home', 'Aperçu', 'home'], ['guests', 'Invités', 'users'], ['tables', 'Tables', 'table'], ['scan', 'Scanner', 'scan']];
 
 function App() {
   const [ok, setOk] = useState(Boolean(getKey()));
-  const [tab, setTab] = useState('list');
-  const [open, setOpen] = useState(null); // { code, initial }
-  const [refresh, setRefresh] = useState(0);
+  const [view, setView] = useState('home');
+  const [filter, setFilter] = useState('all');
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const [share, setShare] = useState(null);   // code
+  const [form, setForm] = useState(null);     // { guest? }
+  const [table, setTable] = useState(null);   // numéro
+  const [note, setNote] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const toast = useCallback((m) => { setNote(m); clearTimeout(toast.t); toast.t = setTimeout(() => setNote(''), 2600); }, []);
+  const logout = () => { setKey(''); setOk(false); setData(null); };
+  const load = useCallback(async () => {
+    try { const d = await api('/api/guests'); d.plan.list.forEach((t) => { NAMES[t.n] = t.name; }); setData(d); setErr(''); }
+    catch (e) { if (e.status === 401) logout(); else setErr(e.message); }
+  }, []);
+  useEffect(() => { if (ok) load(); }, [ok]);
+
   if (!ok) return html`<${Login} onOk=${() => setOk(true)} />`;
-  const tabs = [['list', 'Invités'], ['create', 'Nouvelle invitation'], ['scan', 'Scanner']];
+
+  const go = (v, f) => { setView(v); if (f) setFilter(f); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const del = async (g) => {
+    if (!confirm(`Supprimer l’invitation de ${g.prenom} ${g.nom} (${g.code}) ?`)) return;
+    try { await api('/api/guests?code=' + encodeURIComponent(g.code), { method: 'DELETE' }); toast('Invitation supprimée'); load(); }
+    catch (e) { toast(e.message); }
+  };
+  const assign = async (code, n) => {
+    try { await api('/api/guests?code=' + encodeURIComponent(code), { method: 'PATCH', body: JSON.stringify({ table: n }) }); await load(); toast(n ? `Placé à la table ${n}` : 'Retiré de la table'); }
+    catch (e) { toast(e.message); }
+  };
+  const rename = async (n, name) => {
+    try { const d = await api('/api/guests', { method: 'POST', body: JSON.stringify({ action: 'tableName', table: n, name }) }); await load(); toast(`Table ${n} : ${d.name}`); return true; }
+    catch (e) { toast(e.message); return false; }
+  };
+  const saved = (g, created) => { setForm(null); load(); toast(created ? 'Billet créé ✨' : 'Modifications enregistrées'); if (created) setShare(g.code); };
+  const title = { home: 'Aperçu', guests: 'Invités', tables: 'Plan de table', scan: 'Scanner l’entrée' }[view];
+
   return html`
-    <div className="mx-auto max-w-4xl px-4 pb-16">
-      <header className="flex items-center justify-between py-6">
-        <p className="font-script text-4xl text-emeraude-900">Annie & Daniel</p>
-        <button className="text-sm text-emeraude-700 underline" onClick=${() => { setKey(''); setOk(false); }}>Déconnexion</button>
-      </header>
-      <nav className="mb-6 flex rounded-full bg-white p-1 shadow-sm">
-        ${tabs.map(([k, l]) => html`<button key=${k} onClick=${() => setTab(k)}
-          className=${'flex-1 rounded-full px-3 py-2.5 text-sm font-medium transition ' + (tab === k ? 'bg-emeraude-900 text-white shadow' : 'text-emeraude-900 hover:bg-emeraude-50')}>${l}</button>`)}
+    <div className="bg-app min-h-screen">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-ivoire/5 bg-nuit-800/60 p-6 backdrop-blur-xl lg:flex">
+        <p className="font-script text-4xl text-or-200">Annie & Daniel</p>
+        <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-ivoire/40">12 · 12 · 2026</p>
+        <nav className="mt-10 space-y-1">
+          ${NAV.map(([k, l, ic]) => html`<button key=${k} onClick=${() => go(k)}
+            className=${'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm transition ' + (view === k ? 'bg-or-300/10 font-medium text-or-100 ring-1 ring-or-300/20' : 'text-ivoire/60 hover:bg-ivoire/5 hover:text-ivoire')}>
+            <${Icon} name=${ic} className="h-[18px] w-[18px]" />${l}</button>`)}
+        </nav>
+        <button className=${btnGold + ' mt-8'} onClick=${() => setForm({})}><${Icon} name="plus" />Ajouter un invité</button>
+        <button className=${btnLine + ' mt-3'} onClick=${() => setImporting(true)}><${Icon} name="csv" />Importer un Excel</button>
+        <button className="mt-auto flex items-center gap-2 text-sm text-ivoire/45 hover:text-ivoire" onClick=${logout}><${Icon} name="logout" />Déconnexion</button>
+      </aside>
+
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-ivoire/5 bg-nuit/70 px-4 py-3 backdrop-blur-xl sm:px-8 lg:py-5">
+          <p className="font-script text-3xl text-or-200 lg:hidden">A & D</p>
+          <h1 className="hidden font-display text-3xl font-light lg:block">${title}</h1>
+          <div className="ml-auto flex items-center gap-2">
+            <button className=${btnLine + ' !px-3 lg:hidden'} onClick=${() => setImporting(true)} title="Importer un Excel"><${Icon} name="csv" /><span className="hidden sm:inline">Importer</span></button>
+            <button className=${btnGold + ' !px-4'} onClick=${() => setForm({})}><${Icon} name="plus" /><span className="hidden sm:inline">Ajouter un invité</span><span className="sm:hidden">Ajouter</span></button>
+            <button className=${iconBtn + ' lg:hidden'} onClick=${logout} title="Déconnexion"><${Icon} name="logout" /></button>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-6xl px-4 pb-32 pt-6 sm:px-8 lg:pb-16">
+          <h1 className="mb-5 font-display text-3xl font-light lg:hidden">${title}</h1>
+          ${err && html`<p className="mb-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">${err} <button className="underline" onClick=${load}>Réessayer</button></p>`}
+          ${view === 'scan' ? html`<${Scanner} />`
+            : !data ? !err && html`<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">${[0, 1, 2, 3].map((i) => html`<div key=${i} className="card h-36 animate-pulse"></div>`)}</div>`
+            : view === 'home' ? html`<${Overview} data=${data} go=${go} />`
+            : view === 'guests' ? html`<${Guests} data=${data} filter=${filter} setFilter=${setFilter} onShare=${setShare} onEdit=${(g) => setForm({ guest: g })} onDelete=${del} toast=${toast} />`
+            : html`<${Tables} data=${data} onOpen=${setTable} />`}
+        </main>
+      </div>
+
+      <nav className="fixed inset-x-3 bottom-3 z-30 flex rounded-full border border-ivoire/10 bg-nuit-800/90 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden" style=${{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+        ${NAV.map(([k, l, ic]) => html`<button key=${k} onClick=${() => go(k)}
+          className=${'flex flex-1 flex-col items-center gap-0.5 rounded-full py-2 text-[10px] transition ' + (view === k ? 'bg-or-300 font-semibold text-nuit' : 'text-ivoire/60')}>
+          <${Icon} name=${ic} className="h-[18px] w-[18px]" />${l}</button>`)}
       </nav>
-      ${tab === 'list' && html`<${Guests} refresh=${refresh} onOpen=${(code) => setOpen({ code })} />`}
-      ${tab === 'create' && html`<${Create} onCreated=${(g) => { setRefresh((n) => n + 1); setOpen({ code: g.code, initial: g }); }} />`}
-      ${tab === 'scan' && html`<${Scanner} />`}
-      ${open && html`<${TicketView} code=${open.code} initial=${open.initial} onClose=${() => setOpen(null)} />`}
+
+      ${form && data && html`<${GuestForm} guest=${form.guest} plan=${data.plan} onClose=${() => setForm(null)} onSaved=${saved} />`}
+      ${share && html`<${ShareModal} code=${share} onClose=${() => setShare(null)} onChanged=${load} toast=${toast} />`}
+      ${table && data && html`<${TableModal} n=${table} data=${data} onClose=${() => setTable(null)} assign=${assign} rename=${rename} onShare=${(c) => { setTable(null); setShare(c); }} />`}
+      ${importing && html`<${ImportModal} onClose=${() => setImporting(false)} onDone=${(n) => { load(); if (n) toast(`${plural(n, 'invité')} importé${n > 1 ? 's' : ''} ✨`); }} />`}
+      ${note && html`<div className="pop fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-or-300/30 bg-nuit-700 px-5 py-2.5 text-sm text-or-100 shadow-2xl lg:bottom-8">${note}</div>`}
     </div>`;
 }
 

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Annie & Daniel — Notre mariage, le 12 décembre 2026</title>
-<meta name="description" content="Annie et Daniel vous invitent à leur mariage le 12 décembre 2026 à Kondengui. Confirmez votre présence et retrouvez votre billet.">
+<meta name="description" content="Annie et Daniel vous invitent à leur mariage le 12 décembre 2026 à Kondengui. Retrouvez votre billet et votre table grâce à votre code d’invitation.">
 <meta name="theme-color" content="#03110C">
 <meta property="og:title" content="Annie & Daniel — Notre mariage">
 <meta property="og:description" content="12 décembre 2026 — Bénédiction à 12h00, soirée dansante à 20h00.">
@@ -181,7 +181,6 @@
 const CONFIG = {
   siteUrl: '',                                   // ex. 'https://annie-daniel.vercel.app' (sinon l'adresse courante est utilisée dans le QR code)
   eventDate: '2026-12-12T12:00:00+01:00',        // début de la bénédiction (heure du Cameroun)
-  rsvpDeadline: '2026-09-30T23:59:59+01:00',     // affichée seulement si elle est encore à venir
   families: 'Jean Njimongna, Mfonzie Salomon, Ndam Alexandre, Yeyap Ndam Théodore, Tchiengue, Dimi, Manga',
   photo: '/couple.jpg',
   places: [
@@ -245,8 +244,6 @@ const NUMBERS = [
 const { useState, useEffect, useRef, useMemo, Fragment } = React;
 const html = htm.bind(React.createElement);
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const IS_DEV = ['localhost', '127.0.0.1', ''].includes(location.hostname) || location.protocol === 'file:';
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 const baseUrl = () => CONFIG.siteUrl || (location.origin && location.origin !== 'null' ? location.origin : '');
@@ -257,17 +254,7 @@ const btnPrimary = 'btn-shine inline-flex items-center justify-center gap-2 roun
 const btnGhost = 'btn-fill inline-flex items-center justify-center gap-2 rounded-full border border-or-300/50 px-7 py-3.5 text-sm font-medium tracking-wide text-ivoire transition-colors duration-500 active:scale-[.98] disabled:opacity-50';
 const kicker = 'text-[11px] font-medium uppercase tracking-[0.35em] text-or-300/80';
 
-/* --- Stockage : API (Vercel + Supabase) ; repli local uniquement en développement --- */
-const LS_KEY = 'annie-daniel-rsvps-v1';
-const localDb = {
-  read() { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; } },
-  write(a) { try { localStorage.setItem(LS_KEY, JSON.stringify(a)); } catch {} }
-};
-const genCode = () => {
-  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return 'AD-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), (n) => A[n % A.length]).join('');
-};
-
+/* --- API : recherche d'un billet par son code --- */
 async function apiCall(path, opts) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
   if (!(res.headers.get('content-type') || '').includes('application/json')) throw new Error('NO_API');
@@ -275,40 +262,16 @@ async function apiCall(path, opts) {
   if (!res.ok) { const e = new Error(data.error || 'Une erreur est survenue.'); e.status = res.status; e.apiCode = data.code; throw e; }
   return data;
 }
-const apiMissing = (e) => IS_DEV && (e.message === 'NO_API' || e.apiCode === 'NO_DB' || e instanceof TypeError);
 
-async function saveRsvp(f) {
-  try {
-    const d = await apiCall('/api/rsvp', { method: 'POST', body: JSON.stringify(f) });
-    return { guest: d.guest, offline: false };
-  } catch (e) {
-    if (!apiMissing(e)) {
-      if (e.message === 'NO_API' || e instanceof TypeError) throw new Error('Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.');
-      throw e;
-    }
-    const list = localDb.read();
-    const email = f.email.trim().toLowerCase();
-    let g = list.find((x) => x.email === email);
-    const data = { nom: f.nom.trim(), prenom: f.prenom.trim(), email, presence: f.presence, personnes: f.presence === 'oui' ? Number(f.personnes) || 1 : 0, restrictions: f.restrictions.trim() };
-    if (g) Object.assign(g, data); else { g = { code: genCode(), createdAt: new Date().toISOString(), ...data }; list.push(g); }
-    localDb.write(list);
-    return { guest: g, offline: true };
-  }
-}
-
+const CODE_RE = /AD-[A-Z0-9]{6}/;
 async function findInvitation(q) {
   try {
     const d = await apiCall('/api/rsvp?q=' + encodeURIComponent(q.trim()));
-    return { guest: d.guest, offline: false };
+    return d.guest;
   } catch (e) {
     if (e.status === 404 && e.apiCode === 'NOT_FOUND') return null;
-    if (!apiMissing(e)) {
-      if (e.message === 'NO_API' || e instanceof TypeError) throw new Error('Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.');
-      throw e;
-    }
-    const v = q.trim().toLowerCase();
-    const g = localDb.read().find((x) => x.email === v || x.code.toLowerCase() === v);
-    return g ? { guest: g, offline: true } : null;
+    if (e.message === 'NO_API' || e instanceof TypeError) throw new Error('Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.');
+    throw e;
   }
 }
 
@@ -516,8 +479,8 @@ function Hero() {
           </div>
 
           <div className="fade-in mt-11 flex flex-col gap-3 sm:flex-row" style=${at(1.7)}>
-            <a href="#rsvp" className=${btnPrimary}>Confirmer ma présence</a>
-            <a href="#rsvp" onClick=${() => window.dispatchEvent(new CustomEvent('open-search'))} className=${btnGhost}>Retrouver mon billet</a>
+            <a href="#rsvp" className=${btnPrimary}>Retrouver mon billet</a>
+            <a href="#programme" className=${btnGhost}>Voir le programme</a>
           </div>
         </div>
 
@@ -620,7 +583,7 @@ function Programme() {
           <${Card} className="md:col-span-3" delay=${200}>
             <p className=${kicker}>Le billet</p>
             <p className="mt-6 font-display text-3xl font-light leading-snug text-ivoire">Un QR code, à présenter à l’entrée.</p>
-            <p className="mt-4 text-sm leading-relaxed text-ivoire/55">Confirmez votre présence pour recevoir votre « Wedding Pass » nominatif, à télécharger ou imprimer.</p>
+            <p className="mt-4 text-sm leading-relaxed text-ivoire/55">Votre « Wedding Pass » nominatif vous est envoyé personnellement. Saisissez son code ici pour le retrouver, avec votre table.</p>
             <a href="#rsvp" className="ulink mt-6 inline-block text-sm text-or-300">Obtenir mon billet →</a>
           <//>
         </div>
@@ -795,7 +758,7 @@ function Places() {
 }
 
 /* --- Billet virtuel (rendu par ticket.js sur le visuel billet.jpg) --- */
-function Ticket({ guest, offline }) {
+function Ticket({ guest }) {
   const qr = useQr(guest.code, guest.qr);
   const [img, setImg] = useState('');
   const [fail, setFail] = useState(false);
@@ -808,7 +771,6 @@ function Ticket({ guest, offline }) {
   }, [qr, guest.code, guest.prenom, guest.nom, guest.personnes]);
   return html`
     <div>
-      ${offline && html`<p className="mx-auto mb-6 max-w-md rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-center text-sm text-amber-100">Mode test : cette réponse est enregistrée uniquement sur cet appareil.</p>`}
       ${img
         ? html`<img id="ticket-print" src=${img} alt=${`Billet de ${guest.prenom} ${guest.nom}, code ${guest.code}`} className="fade-in mx-auto w-full max-w-3xl rounded-2xl shadow-[0_40px_100px_-30px_rgba(232,203,143,.45)] ring-1 ring-or-300/30" style=${{ animationDuration: '1.2s' }} />`
         : fail
@@ -827,156 +789,91 @@ function Field({ label, hint, children }) {
   return html`<label className="block"><span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.2em] text-ivoire/55">${label}</span>${children}${hint && html`<span className="mt-1.5 block text-xs text-ivoire/40">${hint}</span>`}</label>`;
 }
 
-function Outcome({ res, onReset, resetLabel, onConfirm }) {
-  const g = res.guest;
-  const back = html`<p className="mt-10 text-center"><button onClick=${onReset} className="ulink text-sm text-ivoire/60 hover:text-ivoire">${resetLabel}</button></p>`;
-  if (g.presence === 'attente' || g.presence === 'oui') {
-    const pending = g.presence === 'attente';
+function TableBadge({ table, name }) {
+  return html`
+    <div className="mx-auto mt-8 inline-flex flex-col items-center gap-1 rounded-[28px] border border-or-300/30 bg-or-300/[0.06] px-9 py-4 shadow-[0_0_60px_-20px_rgba(232,203,143,.5)]">
+      <span className="text-[11px] font-medium uppercase tracking-[0.35em] text-or-300/80">Votre table${table ? ` · n° ${table}` : ''}</span>
+      ${table
+        ? html`<span className="gold-text font-display text-5xl font-light italic leading-tight">${name || table}</span>`
+        : html`<span className="py-1 text-sm text-ivoire/60">communiquée très bientôt</span>`}
+    </div>`;
+}
+
+function Outcome({ guest: g, onReset }) {
+  const back = html`<p className="mt-10 text-center"><button onClick=${onReset} className="ulink text-sm text-ivoire/60 hover:text-ivoire">Rechercher un autre billet</button></p>`;
+  if (g.presence === 'non') {
     return html`
-      <div>
-        <div className="mb-10 text-center">
-          <p className=${kicker}>${pending ? 'Votre invitation' : 'C’est confirmé'}</p>
-          <h3 className="mt-4 font-display text-4xl font-light text-ivoire sm:text-5xl">${pending ? `Bienvenue, ${g.prenom}` : `Votre billet est prêt, ${g.prenom}`}</h3>
-          <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-ivoire/60">${pending
-            ? 'Voici votre billet : le QR code vous sera demandé à l’entrée. Merci de nous confirmer votre présence.'
-            : 'Téléchargez-le ou imprimez-le : le QR code vous sera demandé à l’entrée. Pour le retrouver, saisissez votre code ou votre e-mail dans « Retrouver mon billet ».'}</p>
-          ${pending && html`<button onClick=${() => onConfirm(g)} className=${btnPrimary + ' mt-7'}>Confirmer ma présence</button>`}
-        </div>
-        <${Ticket} guest=${g} offline=${res.offline} />
+      <div className="mx-auto max-w-lg py-8 text-center">
+        <p className="font-script text-6xl text-or-200">Merci</p>
+        <h3 className="mt-4 font-display text-3xl font-light text-ivoire">${g.prenom}, vous serez dans nos pensées</h3>
+        <p className="mt-4 text-sm leading-relaxed text-ivoire/60">Nous avons bien noté que vous ne pourrez pas être des nôtres le 12 décembre. Si votre situation change, écrivez-nous simplement.</p>
         ${back}
       </div>`;
   }
+  const n = g.personnes || 1;
   return html`
-    <div className="mx-auto max-w-lg py-8 text-center">
-      <p className="font-script text-6xl text-or-200">Merci</p>
-      <h3 className="mt-4 font-display text-3xl font-light text-ivoire">${g.prenom}, vous serez dans nos pensées</h3>
-      <p className="mt-4 text-sm leading-relaxed text-ivoire/60">Nous avons bien noté que vous ne pourrez pas être des nôtres le 12 décembre. Si votre situation change, renvoyez simplement le formulaire avec la même adresse e-mail.</p>
-      <button onClick=${onReset} className=${btnGhost + ' mt-8'}>${resetLabel}</button>
+    <div>
+      <div className="mb-10 text-center">
+        <p className=${kicker}>Wedding Pass</p>
+        <h3 className="mt-4 font-display text-4xl font-light text-ivoire sm:text-5xl">Bienvenue, ${g.prenom}</h3>
+        <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-ivoire/60">Voici votre billet${n > 1 ? ` pour ${n} personnes` : ''}. Téléchargez-le ou imprimez-le : son QR code vous sera demandé à l’entrée.</p>
+        <${TableBadge} table=${g.table} name=${g.tableName} />
+      </div>
+      <${Ticket} guest=${g} />
+      ${back}
     </div>`;
 }
 
 function Rsvp() {
-  const [tab, setTab] = useState('rsvp');
-  const [res, setRes] = useState(null);
-  const empty = { prenom: '', nom: '', email: '', telephone: '', presence: 'oui', personnes: 1, restrictions: '', website: '', code: '' };
-  const [f, setF] = useState(empty);
+  const [guest, setGuest] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
   const [q, setQ] = useState('');
-  const [sErr, setSErr] = useState('');
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const [err, setErr] = useState('');
 
   const runSearch = async (val) => {
-    setSErr('');
-    if (!val.trim()) { setSErr('Saisissez votre code (AD-XXXXXX) ou votre e-mail.'); return; }
+    setErr('');
+    const code = (val.trim().toUpperCase().replace(/\s+/g, '').match(CODE_RE) || [])[0];
+    if (!code) { setErr('Saisissez le code de votre billet, par exemple AD-7K3M9Q.'); return; }
     setBusy(true);
     try {
-      const r = await findInvitation(val);
-      if (!r) setSErr('Aucune invitation trouvée. Vérifiez le code ou l’e-mail saisi, ou confirmez votre présence avec le formulaire.');
-      else setRes(r);
-    } catch (e) { setSErr(e.message); }
+      const g = await findInvitation(code);
+      if (!g) setErr('Aucun billet trouvé pour ce code. Vérifiez-le dans le message que vous avez reçu.');
+      else setGuest(g);
+    } catch (e) { setErr(e.message); }
     finally { setBusy(false); }
   };
 
   useEffect(() => {
-    const open = () => { setTab('search'); setRes(null); };
-    window.addEventListener('open-search', open);
     const code = new URLSearchParams(location.search).get('code');
     if (code) {
-      setTab('search'); setQ(code); runSearch(code);
+      setQ(code); runSearch(code);
       setTimeout(() => document.getElementById('rsvp')?.scrollIntoView({ behavior: 'smooth' }), REDUCED ? 0 : 2800);
     }
-    return () => window.removeEventListener('open-search', open);
   }, []);
 
-  const submit = async (e) => {
-    e.preventDefault(); setErr('');
-    if (!f.prenom.trim() || !f.nom.trim()) return setErr('Merci d’indiquer votre prénom et votre nom.');
-    if (!EMAIL_RE.test(f.email.trim())) return setErr('Cette adresse e-mail semble invalide.');
-    setBusy(true);
-    try { setRes(await saveRsvp(f)); }
-    catch (ex) { setErr(ex.message || 'Une erreur est survenue.'); }
-    finally { setBusy(false); }
-  };
-
-  const reset = () => { setRes(null); setErr(''); setSErr(''); setF(empty); };
-  const confirmInvite = (g) => {
-    setF({ ...empty, prenom: g.prenom, nom: g.nom, email: g.email || '', personnes: g.personnes || 1, code: g.code });
-    setRes(null); setErr(''); setTab('rsvp');
-  };
-  const deadline = new Date(CONFIG.rsvpDeadline);
-  const showDeadline = deadline > new Date();
-  const alert = (m) => html`<p role="alert" className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">${m}</p>`;
+  const reset = () => { setGuest(null); setErr(''); setQ(''); };
 
   return html`
     <section id="rsvp" className="relative overflow-hidden px-5 py-28 md:px-8 md:py-40">
       <div className="glow -left-40 top-20 h-[30rem] w-[30rem] bg-emeraude-700" aria-hidden="true"></div>
       <div className="glow -right-40 bottom-0 h-[26rem] w-[26rem] bg-brule-500/25" style=${{ animationDelay: '-9s' }} aria-hidden="true"></div>
       <div className="relative mx-auto max-w-4xl">
-        <${SectionTitle} kick="Votre invitation" title=${html`Serez-vous <em className="gold-text">des nôtres ?</em>`}>
-          <p>Confirmez votre présence pour recevoir votre billet nominatif avec QR code.${showDeadline ? ` Réponse souhaitée avant le ${fmtDate(CONFIG.rsvpDeadline, { day: 'numeric', month: 'long', year: 'numeric' })}.` : ''}</p>
+        <${SectionTitle} kick="Votre invitation" title=${html`Retrouvez <em className="gold-text">votre billet</em>`}>
+          <p>Saisissez le code reçu avec votre invitation pour afficher votre billet nominatif, son QR code et votre table.</p>
         <//>
 
         <${Reveal} delay=${100} className="mt-16">
           <div className="rounded-[32px] border border-ivoire/10 bg-nuit-800/70 p-6 shadow-[0_50px_120px_-40px_rgba(0,0,0,.8)] backdrop-blur-xl sm:p-12">
-            ${res
-              ? html`<${Outcome} res=${res} onReset=${reset} onConfirm=${confirmInvite} resetLabel=${tab === 'rsvp' ? 'Modifier ma réponse ou inscrire une autre personne' : 'Faire une autre recherche'} />`
+            ${guest
+              ? html`<${Outcome} guest=${guest} onReset=${reset} />`
               : html`
-                <div>
-                  <div className="relative mx-auto mb-12 flex max-w-md rounded-full border border-ivoire/10 bg-ivoire/[0.03] p-1" role="tablist">
-                    <span className="absolute bottom-1 top-1 rounded-full bg-or-300 transition-all duration-700" style=${{ left: tab === 'rsvp' ? '4px' : '50%', width: 'calc(50% - 4px)', transitionTimingFunction: 'var(--ease)' }}></span>
-                    ${[['rsvp', 'Je confirme'], ['search', 'Retrouver mon billet']].map(([k, l]) => html`
-                      <button key=${k} role="tab" aria-selected=${tab === k} onClick=${() => setTab(k)}
-                        className=${`relative z-10 flex-1 rounded-full px-3 py-2.5 text-sm font-medium transition-colors duration-500 ${tab === k ? 'text-nuit' : 'text-ivoire/70 hover:text-ivoire'}`}>${l}</button>`)}
-                  </div>
-
-                  ${tab === 'rsvp' ? html`
-                    <form onSubmit=${submit} noValidate className="mx-auto max-w-xl space-y-6">
-                      ${f.code && html`<p className="rounded-2xl border border-or-300/25 bg-or-300/10 px-4 py-3 text-center text-sm text-or-100">Confirmation de l’invitation <strong>${f.code}</strong></p>`}
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <${Field} label="Prénom"><input className="field" value=${f.prenom} onChange=${set('prenom')} autoComplete="given-name" required /><//>
-                        <${Field} label="Nom"><input className="field" value=${f.nom} onChange=${set('nom')} autoComplete="family-name" required /><//>
-                      </div>
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <${Field} label="E-mail" hint="Il vous servira à retrouver votre billet."><input type="email" className="field" value=${f.email} onChange=${set('email')} autoComplete="email" required /><//>
-                        <${Field} label="Téléphone (facultatif)"><input type="tel" className="field" value=${f.telephone} onChange=${set('telephone')} autoComplete="tel" /><//>
-                      </div>
-
-                      <fieldset>
-                        <legend className="mb-2 text-[11px] font-medium uppercase tracking-[0.2em] text-ivoire/55">Serez-vous des nôtres ?</legend>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          ${[['oui', 'Avec joie, je serai là'], ['non', 'Je ne pourrai pas venir']].map(([v, l]) => html`
-                            <label key=${v} className=${`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3.5 text-sm transition-all duration-500 ${f.presence === v ? 'border-or-300/70 bg-or-300/10 text-ivoire shadow-[0_0_30px_-10px_rgba(232,203,143,.5)]' : 'border-ivoire/10 text-ivoire/60 hover:border-ivoire/25'}`}>
-                              <input type="radio" name="presence" value=${v} checked=${f.presence === v} onChange=${set('presence')} className="accent-[#E8CB8F]" />${l}
-                            </label>`)}
-                        </div>
-                      </fieldset>
-
-                      ${f.presence === 'oui' && html`
-                        <div className="grid gap-6 sm:grid-cols-2">
-                          <${Field} label="Personnes (vous inclus)">
-                            <select className="field" value=${f.personnes} onChange=${set('personnes')}>${[1, 2, 3, 4, 5, 6].map((n) => html`<option key=${n} value=${n}>${n}</option>`)}</select>
-                          <//>
-                          <${Field} label="Restrictions alimentaires"><input className="field" value=${f.restrictions} onChange=${set('restrictions')} placeholder="Allergies, régime, etc." /><//>
-                        </div>`}
-
-                      <input type="text" name="website" value=${f.website} onChange=${set('website')} tabIndex="-1" autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" />
-
-                      ${err && alert(err)}
-                      <div className="pt-2 text-center">
-                        <button type="submit" disabled=${busy} className=${btnPrimary}>${busy ? 'Envoi en cours…' : 'Envoyer ma réponse'}</button>
-                        <p className="mt-4 text-xs text-ivoire/40">Pour modifier votre réponse, renvoyez le formulaire avec la même adresse e-mail.</p>
-                      </div>
-                    </form>`
-                  : html`
-                    <form onSubmit=${(e) => { e.preventDefault(); runSearch(q); }} className="mx-auto max-w-xl space-y-6">
-                      <${Field} label="Votre code ou votre e-mail" hint="Le code figure sur votre billet, par exemple AD-7K3M9Q.">
-                        <input className="field" value=${q} onChange=${(e) => setQ(e.target.value)} placeholder="AD-XXXXXX ou nom@exemple.com" autoComplete="email" />
-                      <//>
-                      ${sErr && alert(sErr)}
-                      <div className="text-center"><button type="submit" disabled=${busy} className=${btnPrimary}>${busy ? 'Recherche…' : 'Retrouver mon billet'}</button></div>
-                    </form>`}
-                </div>`}
+                <form onSubmit=${(e) => { e.preventDefault(); runSearch(q); }} className="mx-auto max-w-xl space-y-6">
+                  <${Field} label="Code de votre billet" hint="Il figure dans le message d’invitation, par exemple AD-7K3M9Q.">
+                    <input className="field text-center uppercase tracking-[0.3em]" value=${q} onChange=${(e) => setQ(e.target.value)} placeholder="AD-XXXXXX" autoComplete="off" autoCapitalize="characters" spellCheck="false" />
+                  <//>
+                  ${err && html`<p role="alert" className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">${err}</p>`}
+                  <div className="text-center"><button type="submit" disabled=${busy} className=${btnPrimary}>${busy ? 'Recherche…' : 'Afficher mon billet'}</button></div>
+                </form>`}
           </div>
         <//>
       </div>
