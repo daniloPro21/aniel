@@ -9,5 +9,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "qrcode": "^1.5.4"
+  },
+  "scripts": {
+    "css": "npx -y tailwindcss@3.4.17 -c styles/tailwind.config.js -i styles/input.css -o tw.css --minify"
   }
 }

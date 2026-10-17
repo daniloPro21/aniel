@@ -13,35 +13,13 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          nuit: { DEFAULT: '#03110C', 900: '#03110C', 800: '#051A13', 700: '#07231A' },
-          emeraude: { 50:'#F2F7F4', 100:'#DDEEE6', 300:'#7FC2A8', 400:'#3FA382', 500:'#1A8A68', 600:'#138063', 700:'#0F6650', 800:'#0C4033', 900:'#0A3024', 950:'#06251B' },
-          or: { 100:'#FAF0D6', 200:'#F3DFA8', 300:'#E8CB8F', 400:'#D4AE6A', 500:'#C0954D', 600:'#A27A36' },
-          brule: { 400:'#F08A50', 500:'#E2672B', 600:'#C9561F' },
-          ivoire: '#F5EFE3'
-        },
-        fontFamily: {
-          display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
-          script: ['"Great Vibes"', 'cursive'],
-          sans: ['Inter', 'system-ui', 'sans-serif']
-        }
-      }
-    }
-  };
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Great+Vibes&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script src="/ticket.js"></script>
+<script src="/ticket.js?v=2"></script>
 
 <style>
   :root { --ease: cubic-bezier(.16,1,.3,1); --gold: linear-gradient(100deg,#B98A3E 0%,#F3DFA8 30%,#C0954D 55%,#F3DFA8 80%,#B98A3E 100%); }
@@ -165,6 +143,7 @@
     #intro, .grain::after { display: none; }
   }
 </style>
+<link rel="stylesheet" href="/tw.css?v=1">
 </head>
 
 <body class="grain">
@@ -182,7 +161,7 @@ const CONFIG = {
   siteUrl: '',                                   // ex. 'https://annie-daniel.vercel.app' (sinon l'adresse courante est utilisée dans le QR code)
   eventDate: '2026-12-12T12:00:00+01:00',        // début de la bénédiction (heure du Cameroun)
   families: 'Jean Njimongna, Mfonzie Salomon, Ndam Alexandre, Yeyap Ndam Théodore, Tchiengue, Dimi, Manga',
-  photo: '/couple.jpg',
+  photo: '/couple.webp',            // 900 px ; '/couple-600.webp' pour les mobiles, '/couple.jpg' en secours
   places: [
     {
       key: 'benediction', label: 'Bénédiction', time: '12h00',
@@ -252,6 +231,9 @@ const EVENT_LONG = (() => { const t = fmtDate(CONFIG.eventDate, { weekday: 'long
 
 const btnPrimary = 'btn-shine inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-or-500 via-or-300 to-or-500 bg-[length:200%_auto] px-8 py-3.5 text-sm font-semibold tracking-wide text-nuit shadow-[0_10px_40px_-10px_rgba(232,203,143,.6)] transition-all duration-500 hover:bg-right hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-12px_rgba(232,203,143,.75)] active:scale-[.98] disabled:opacity-60 disabled:cursor-wait';
 const btnGhost = 'btn-fill inline-flex items-center justify-center gap-2 rounded-full border border-or-300/50 px-7 py-3.5 text-sm font-medium tracking-wide text-ivoire transition-colors duration-500 active:scale-[.98] disabled:opacity-50';
+// Photo en WebP (léger) ; repli en JPEG pour les très vieux navigateurs
+const PHOTO_SET = '/couple-600.webp 600w, /couple.webp 900w';
+const jpgFallback = (e) => { const i = e.currentTarget; i.onerror = null; i.removeAttribute('srcset'); i.src = '/couple.jpg'; };
 const kicker = 'text-[11px] font-medium uppercase tracking-[0.35em] text-or-300/80';
 
 /* --- API : recherche d'un billet par son code --- */
@@ -452,7 +434,7 @@ function Hero() {
       <div className="glow -right-32 bottom-0 h-[28rem] w-[28rem] bg-or-500/40" style=${{ animationDelay: '-6s' }} aria-hidden="true"></div>
 
       <div className="absolute inset-0 md:hidden" aria-hidden="true">
-        <img src=${CONFIG.photo} alt="" className="h-full w-full object-cover object-[50%_20%] opacity-35" />
+        <img src="/couple-600.webp" onError=${jpgFallback} alt="" className="h-full w-full object-cover object-[50%_20%] opacity-35" />
         <div className="absolute inset-0 bg-gradient-to-b from-nuit/70 via-nuit/60 to-nuit"></div>
       </div>
 
@@ -488,7 +470,7 @@ function Hero() {
           <div className="fade-in relative mx-auto aspect-[3/4.3] w-full max-w-[380px]" style=${at(0.3)}>
             <div className="absolute -inset-4 rounded-t-full border border-or-300/30" data-speed="-0.06"></div>
             <div className="relative h-full overflow-hidden rounded-t-full shadow-[0_40px_120px_-30px_rgba(0,0,0,.8)]">
-              <img src=${CONFIG.photo} alt="Annie et Daniel" className="absolute inset-x-0 -top-[10%] h-[120%] w-full object-cover object-[50%_15%]" data-speed="0.08" />
+              <img src=${CONFIG.photo} onError=${jpgFallback} alt="Annie et Daniel" className="absolute inset-x-0 -top-[10%] h-[120%] w-full object-cover object-[50%_15%]" data-speed="0.08" />
               <div className="absolute inset-0 bg-gradient-to-t from-nuit/60 via-transparent to-transparent"></div>
             </div>
             <div className="absolute -bottom-8 -left-16 w-[150%] opacity-70" data-speed="-0.12" dangerouslySetInnerHTML=${{ __html: FLIGHT_SVG }}></div>
@@ -636,7 +618,7 @@ function Timeline() {
         <div className="mt-32 grid items-center gap-12 md:grid-cols-12">
           <div ref=${imgRef} className=${`clip relative overflow-hidden rounded-[32px] md:col-span-5 ${imgOn ? 'in' : ''}`}>
             <div className="relative aspect-[4/5] overflow-hidden">
-              <div className="absolute inset-x-0 -top-[12%] h-[124%]" data-speed="0.1"><img src=${CONFIG.photo} alt="Annie et Daniel, main dans la main" loading="lazy" className="h-full w-full object-cover object-[50%_45%]" /></div>
+              <div className="absolute inset-x-0 -top-[12%] h-[124%]" data-speed="0.1"><img src=${CONFIG.photo} srcSet=${PHOTO_SET} sizes="(min-width: 768px) 42vw, 92vw" onError=${jpgFallback} alt="Annie et Daniel, main dans la main" loading="lazy" decoding="async" className="h-full w-full object-cover object-[50%_45%]" /></div>
             </div>
           </div>
           <${Reveal} className="md:col-span-7 md:pl-8">

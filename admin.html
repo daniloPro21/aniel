@@ -9,34 +9,13 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E💍%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          nuit: { DEFAULT: '#03110C', 900: '#03110C', 800: '#051A13', 700: '#07231A', 600: '#0A2D21' },
-          emeraude: { 300:'#7FC2A8', 400:'#3FA382', 500:'#1A8A68', 600:'#138063', 700:'#0F6650', 800:'#0C4033', 900:'#0A3024' },
-          or: { 100:'#FAF0D6', 200:'#F3DFA8', 300:'#E8CB8F', 400:'#D4AE6A', 500:'#C0954D', 600:'#A27A36' },
-          brule: { 400:'#F08A50', 500:'#E2672B' },
-          ivoire: '#F5EFE3'
-        },
-        fontFamily: {
-          display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
-          script: ['"Great Vibes"', 'cursive'],
-          sans: ['Inter', 'system-ui', 'sans-serif']
-        }
-      }
-    }
-  };
-</script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Great+Vibes&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/ticket.js"></script>
+<script src="/ticket.js?v=2"></script>
 <style>
   html, body { background: #03110C; }
   body { color: #F5EFE3; -webkit-font-smoothing: antialiased; }
@@ -61,6 +40,7 @@
   .pop { animation: pop .35s cubic-bezier(.16,1,.3,1) both; }
   @media (prefers-reduced-motion: reduce) { .rise, .pop { animation: none; } }
 </style>
+<link rel="stylesheet" href="/tw.css?v=1">
 </head>
 <body class="font-sans">
 <div id="root"></div>

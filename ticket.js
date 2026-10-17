@@ -1,9 +1,9 @@
-/* Billet « Wedding Pass » : le visuel billet.jpg (872×1820) sert de fond,
+/* Billet « Wedding Pass » : le visuel billet.webp (872×1820) sert de fond,
    on y écrit le nom de l'invité dans le cadre « M./MME » et on pose le QR code
    dans le cadre blanc du talon vert, puis le billet est tourné à l'horizontale (1820×872).
    Utilisé par index.html et admin.html. */
 (function () {
-  const BG = '/billet.jpg';
+  const BG = '/billet.webp', BG_JPG = '/billet.jpg';   // WebP (83 Ko) ; JPEG en secours
   const W = 872, H = 1820, SCALE = 2;              // rendu ×2 pour un texte net
   const INK = '#1f2a26', GREEN = '#0a3024';
   const MONO = '"Courier New", Courier, monospace';
@@ -22,7 +22,7 @@
   }
 
   async function renderTicket(guest, qrUrl) {
-    const [bg, qr] = await Promise.all([loadImg(BG), loadImg(qrUrl)]);
+    const [bg, qr] = await Promise.all([loadImg(BG).catch(() => loadImg(BG_JPG)), loadImg(qrUrl)]);
     const c = document.createElement('canvas'); c.width = W * SCALE; c.height = H * SCALE;
     const x = c.getContext('2d');
     x.scale(SCALE, SCALE);
