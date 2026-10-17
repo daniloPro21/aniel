@@ -616,9 +616,11 @@ function Timeline() {
         </div>
 
         <div className="mt-32 grid items-center gap-12 md:grid-cols-12">
-          <div ref=${imgRef} className=${`clip relative overflow-hidden rounded-[32px] md:col-span-5 ${imgOn ? 'in' : ''}`}>
-            <div className="relative aspect-[4/5] overflow-hidden">
-              <div className="absolute inset-x-0 -top-[12%] h-[124%]" data-speed="0.1"><img src=${CONFIG.photo} srcSet=${PHOTO_SET} sizes="(min-width: 768px) 42vw, 92vw" onError=${jpgFallback} alt="Annie et Daniel, main dans la main" loading="lazy" decoding="async" className="h-full w-full object-cover object-[50%_45%]" /></div>
+          <div ref=${imgRef} className="md:col-span-5">${/* on observe ce conteneur : l'élément masqué par clip-path n'est jamais vu comme visible */''}
+            <div className=${`clip relative overflow-hidden rounded-[32px] ${imgOn ? 'in' : ''}`}>
+              <div className="relative aspect-[4/5] overflow-hidden">
+                <div className="absolute inset-x-0 -top-[12%] h-[124%]" data-speed="0.1"><img src=${CONFIG.photo} srcSet=${PHOTO_SET} sizes="(min-width: 768px) 42vw, 92vw" onError=${jpgFallback} alt="Annie et Daniel, main dans la main" loading="lazy" decoding="async" className="h-full w-full object-cover object-[50%_45%]" /></div>
+              </div>
             </div>
           </div>
           <${Reveal} className="md:col-span-7 md:pl-8">
