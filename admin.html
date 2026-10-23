@@ -40,7 +40,7 @@
   .pop { animation: pop .35s cubic-bezier(.16,1,.3,1) both; }
   @media (prefers-reduced-motion: reduce) { .rise, .pop { animation: none; } }
 </style>
-<link rel="stylesheet" href="/tw.css?v=2">
+<link rel="stylesheet" href="/tw.css?v=3">
 </head>
 <body class="font-sans">
 <div id="root"></div>
@@ -104,12 +104,14 @@ const MESSAGES = [
     `⛪ ${EVENT.benediction}`,
     `🥂 ${EVENT.soiree}`,
     '',
-    `🎟️ Votre billet personnel${p.pers} :`,
+    `✅ *Merci de confirmer votre présence*${p.pour} en ouvrant votre invitation (vous pourrez aussi nous dire si vous ne pouvez pas venir) :`,
     p.link,
     `Code : *${g.code}*`,
+    '',
+    `🎟️ Dès votre confirmation, votre billet personnel s’affichera avec son QR code : il vous sera demandé à l’entrée.`,
     p.table && `🍽️ Vous serez installé${p.e} à la table *${p.tname}* (n° ${g.table}).`,
     '',
-    `Gardez bien ce message : le QR code de votre billet vous sera demandé à l’entrée.`,
+    `Gardez bien ce message : il vous permet de retrouver votre billet à tout moment.`,
     '',
     `Avec toute notre affection,`,
     `Annie & Daniel ✨`,
@@ -121,8 +123,10 @@ const MESSAGES = [
     '',
     `La bénédiction nuptiale aura lieu à 12h00 à l’Assemblée Plein Évangile de Kondengui, et sera suivie d’une soirée dansante à 20h00 à El Pathenco.`,
     '',
-    `Votre billet nominatif${p.pers} : ${p.link}`,
+    `Nous vous remercions de bien vouloir confirmer votre présence${p.pour} sur votre invitation personnelle, ou de nous faire savoir si vous ne pourrez pas être des nôtres : ${p.link}`,
     `Code d’invitation : ${g.code}`,
+    '',
+    `Une fois votre présence confirmée, votre billet nominatif et son QR code y seront disponibles ; il vous sera demandé à l’entrée.`,
     p.table && `Votre table : ${p.tname} (n° ${g.table})`,
     '',
     `Votre présence sera pour nous le plus beau des cadeaux.`,
@@ -130,14 +134,14 @@ const MESSAGES = [
   ] },
   { label: 'Court', build: (g, p) => [
     `${g.prenom}, vous êtes invité${p.e} à notre mariage le 12 décembre 2026 ! 🎉💍`,
-    `Votre billet${p.pers} : ${p.link}`,
+    `👉 Confirmez votre présence${p.pour} ici pour recevoir votre billet : ${p.link}`,
     `Code : ${g.code}${p.table ? ` · Table ${p.tname}` : ''}`,
     `On a tellement hâte de vous voir ! Annie & Daniel 🤍`,
   ] },
 ];
 function buildMessage(g, variant) {
   const n = g.personnes || 1;
-  const p = { link: inviteLink(g.code), pers: n > 1 ? ` (valable pour ${n} personnes)` : '', table: Boolean(g.table), tname: g.tableName || NAMES[g.table] || g.table, e: n > 1 ? 's' : '(e)' };
+  const p = { link: inviteLink(g.code), pers: n > 1 ? ` (valable pour ${n} personnes)` : '', pour: n > 1 ? ` pour ${n} personnes` : '', table: Boolean(g.table), tname: g.tableName || NAMES[g.table] || g.table, e: n > 1 ? 's' : '(e)' };
   return MESSAGES[variant].build(g, p).filter((l) => l !== false && l !== null && l !== undefined)
     .join('\n').replace(/\n{3,}/g, '\n\n');
 }
@@ -229,7 +233,9 @@ function ShareModal({ code, onClose, onChanged, toast }) {
   };
   const sendWa = () => {
     const num = waNumber(g.telephone);
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    // api.whatsapp.com plutôt que wa.me : la redirection de wa.me abîme les emojis (affichés en « � »)
+    const q = (num ? `phone=${num}&` : '') + `text=${encodeURIComponent(msg.normalize('NFC'))}`;
+    window.open(`https://api.whatsapp.com/send?${q}`, '_blank', 'noopener');
     markShared();
   };
   const shareImage = async () => {

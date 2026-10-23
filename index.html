@@ -143,7 +143,7 @@
     #intro, .grain::after { display: none; }
   }
 </style>
-<link rel="stylesheet" href="/tw.css?v=2">
+<link rel="stylesheet" href="/tw.css?v=3">
 </head>
 
 <body class="grain">
@@ -388,7 +388,10 @@ function Nav() {
         <ul className="hidden items-center gap-9 text-[13px] tracking-wide text-ivoire/75 md:flex">
           ${links.map(([id, l]) => html`<li key=${id}><a href=${'#' + id} className=${`ulink transition-colors hover:text-ivoire ${active === id ? 'active text-ivoire' : ''}`}>${l}</a></li>`)}
         </ul>
-        <a href="#rsvp" className="btn-shine hidden rounded-full bg-or-300 px-5 py-2 text-[13px] font-semibold text-nuit transition hover:bg-or-200 md:inline-flex">Mon invitation</a>
+        <div className="hidden items-center gap-5 md:flex">
+          <a href="/admin" className="ulink text-[13px] tracking-wide text-ivoire/60 transition-colors hover:text-ivoire">Administration</a>
+          <a href="#rsvp" className="btn-shine inline-flex rounded-full bg-or-300 px-5 py-2 text-[13px] font-semibold text-nuit transition hover:bg-or-200">Mon invitation</a>
+        </div>
         <button className="relative h-10 w-10 md:hidden" aria-label="Menu" aria-expanded=${open} onClick=${() => setOpen(!open)}>
           <span className=${`absolute left-2 right-2 h-px bg-ivoire transition-all duration-500 ${open ? 'top-1/2 rotate-45' : 'top-[15px]'}`}></span>
           <span className=${`absolute left-2 right-2 h-px bg-ivoire transition-all duration-500 ${open ? 'top-1/2 -rotate-45' : 'top-[24px]'}`}></span>
@@ -403,7 +406,10 @@ function Nav() {
                 style=${{ transitionDelay: open ? 120 + i * 70 + 'ms' : '0ms' }}>${l}</a>
             </li>`)}
         </ul>
-        <p className="mt-12 text-sm text-ivoire/50">${EVENT_LONG} · Kondengui</p>
+        <a href="/admin" onClick=${() => setOpen(false)}
+          className=${`mt-10 inline-flex items-center gap-2 self-start rounded-full border border-ivoire/15 px-5 py-2.5 text-sm text-ivoire/70 transition-all duration-700 hover:text-ivoire ${open ? 'opacity-100' : 'opacity-0'}`}
+          style=${{ transitionDelay: open ? 120 + (links.length + 1) * 70 + 'ms' : '0ms' }}>Administration</a>
+        <p className="mt-10 text-sm text-ivoire/50">${EVENT_LONG} · Kondengui</p>
       </div>
     </header>`;
 }
