@@ -143,7 +143,7 @@
     #intro, .grain::after { display: none; }
   }
 </style>
-<link rel="stylesheet" href="/tw.css?v=1">
+<link rel="stylesheet" href="/tw.css?v=2">
 </head>
 
 <body class="grain">
@@ -252,6 +252,17 @@ async function findInvitation(q) {
     return d.guest;
   } catch (e) {
     if (e.status === 404 && e.apiCode === 'NOT_FOUND') return null;
+    if (e.message === 'NO_API' || e instanceof TypeError) throw new Error('Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.');
+    throw e;
+  }
+}
+
+// Réponse de l'invité : 'oui' (je confirme) ou 'non' (je me désiste)
+async function sendAnswer(code, presence) {
+  try {
+    const d = await apiCall('/api/rsvp', { method: 'POST', body: JSON.stringify({ code, presence }) });
+    return d.guest;
+  } catch (e) {
     if (e.message === 'NO_API' || e instanceof TypeError) throw new Error('Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.');
     throw e;
   }
@@ -783,27 +794,76 @@ function TableBadge({ table, name }) {
     </div>`;
 }
 
-function Outcome({ guest: g, onReset }) {
+function Outcome({ guest: g, onReset, onChange }) {
+  const [busy, setBusy] = useState('');       // réponse en cours d'envoi
+  const [err, setErr] = useState('');
+  const [leaving, setLeaving] = useState(false); // étape de confirmation du désistement
+  const n = g.personnes || 1;
+  const e = n > 1 ? 's' : '(e)';
+
+  const answer = async (presence) => {
+    setErr(''); setBusy(presence);
+    try {
+      onChange(await sendAnswer(g.code, presence));
+      setLeaving(false);
+      document.getElementById('rsvp')?.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' });
+    } catch (ex) { setErr(ex.message); }
+    finally { setBusy(''); }
+  };
+  const errBox = err && html`<p role="alert" className="mx-auto mt-6 max-w-md rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">${err}</p>`;
   const back = html`<p className="mt-10 text-center"><button onClick=${onReset} className="ulink text-sm text-ivoire/60 hover:text-ivoire">Rechercher un autre billet</button></p>`;
+
   if (g.presence === 'non') {
     return html`
       <div className="mx-auto max-w-lg py-8 text-center">
         <p className="font-script text-6xl text-or-200">Merci</p>
         <h3 className="mt-4 font-display text-3xl font-light text-ivoire">${g.prenom}, vous serez dans nos pensées</h3>
-        <p className="mt-4 text-sm leading-relaxed text-ivoire/60">Nous avons bien noté que vous ne pourrez pas être des nôtres le 12 décembre. Si votre situation change, écrivez-nous simplement.</p>
+        <p className="mt-4 text-sm leading-relaxed text-ivoire/60">Nous avons bien noté que vous ne pourrez pas être des nôtres le 12 décembre. Si votre situation change, vous pouvez toujours revenir sur votre réponse.</p>
+        <div className="mt-8"><button onClick=${() => answer('oui')} disabled=${Boolean(busy)} className=${btnGhost}>${busy ? 'Enregistrement…' : 'Finalement, je pourrai venir'}</button></div>
+        ${errBox}
         ${back}
       </div>`;
   }
-  const n = g.personnes || 1;
+
+  if (g.presence !== 'oui') {
+    return html`
+      <div className="mx-auto max-w-xl py-6 text-center">
+        <p className=${kicker}>Votre invitation</p>
+        <h3 className="mt-4 font-display text-4xl font-light text-ivoire sm:text-5xl">Bonjour, ${g.prenom}</h3>
+        <p className="mx-auto mt-5 max-w-md text-base leading-relaxed text-ivoire/70">
+          Serez-vous des nôtres le <span className="text-or-200">${EVENT_LONG.toLowerCase()}</span>${n > 1 ? html` <span className="whitespace-nowrap">(invitation pour ${n} personnes)</span>` : ''} ?</p>
+        <p className="mx-auto mt-3 max-w-md text-sm text-ivoire/50">Votre billet et son QR code s’afficheront dès que vous aurez confirmé votre présence.</p>
+        <div className="mt-9 flex flex-wrap justify-center gap-3">
+          <button onClick=${() => answer('oui')} disabled=${Boolean(busy)} className=${btnPrimary}>${busy === 'oui' ? 'Enregistrement…' : `Oui, je serai présent${e}`}</button>
+          <button onClick=${() => answer('non')} disabled=${Boolean(busy)} className=${btnGhost}>${busy === 'non' ? 'Enregistrement…' : 'Je ne pourrai pas venir'}</button>
+        </div>
+        ${errBox}
+        ${back}
+      </div>`;
+  }
+
   return html`
     <div>
       <div className="mb-10 text-center">
         <p className=${kicker}>Wedding Pass</p>
         <h3 className="mt-4 font-display text-4xl font-light text-ivoire sm:text-5xl">Bienvenue, ${g.prenom}</h3>
+        <p className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-emeraude-400/15 px-4 py-1.5 text-xs font-medium text-emeraude-300 ring-1 ring-emeraude-400/30">✓ Présence confirmée</p>
         <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-ivoire/60">Voici votre billet${n > 1 ? ` pour ${n} personnes` : ''}. Téléchargez-le ou imprimez-le : son QR code vous sera demandé à l’entrée.</p>
         <${TableBadge} table=${g.table} name=${g.tableName} />
       </div>
       <${Ticket} guest=${g} />
+      <div className="mx-auto mt-12 max-w-md border-t border-ivoire/10 pt-8 text-center">
+        ${leaving
+          ? html`
+            <p className="font-display text-2xl font-light text-ivoire">Vous ne pourrez plus venir ?</p>
+            <p className="mt-2 text-sm text-ivoire/55">Votre place sera libérée et votre billet ne sera plus valable. Vous pourrez revenir sur votre réponse plus tard.</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button onClick=${() => answer('non')} disabled=${Boolean(busy)} className="inline-flex items-center justify-center rounded-full border border-red-400/40 bg-red-500/10 px-6 py-3 text-sm font-medium text-red-100 transition hover:bg-red-500/20 disabled:opacity-50">${busy ? 'Enregistrement…' : 'Confirmer mon désistement'}</button>
+              <button onClick=${() => setLeaving(false)} disabled=${Boolean(busy)} className=${btnGhost}>Garder ma place</button>
+            </div>`
+          : html`<p className="text-sm text-ivoire/50">Un empêchement ? <button onClick=${() => setLeaving(true)} className="ulink text-ivoire/75 hover:text-ivoire">Je ne pourrai finalement pas venir</button></p>`}
+        ${errBox}
+      </div>
       ${back}
     </div>`;
 }
@@ -843,20 +903,20 @@ function Rsvp() {
       <div className="glow -right-40 bottom-0 h-[26rem] w-[26rem] bg-brule-500/25" style=${{ animationDelay: '-9s' }} aria-hidden="true"></div>
       <div className="relative mx-auto max-w-4xl">
         <${SectionTitle} kick="Votre invitation" title=${html`Retrouvez <em className="gold-text">votre billet</em>`}>
-          <p>Saisissez le code reçu avec votre invitation pour afficher votre billet nominatif, son QR code et votre table.</p>
+          <p>Saisissez le code reçu avec votre invitation pour confirmer votre présence et afficher votre billet nominatif, son QR code et votre table.</p>
         <//>
 
         <${Reveal} delay=${100} className="mt-16">
           <div className="rounded-[32px] border border-ivoire/10 bg-nuit-800/70 p-6 shadow-[0_50px_120px_-40px_rgba(0,0,0,.8)] backdrop-blur-xl sm:p-12">
             ${guest
-              ? html`<${Outcome} guest=${guest} onReset=${reset} />`
+              ? html`<${Outcome} guest=${guest} onReset=${reset} onChange=${setGuest} />`
               : html`
                 <form onSubmit=${(e) => { e.preventDefault(); runSearch(q); }} className="mx-auto max-w-xl space-y-6">
                   <${Field} label="Code de votre billet" hint="Il figure dans le message d’invitation, par exemple AD-7K3M9Q.">
                     <input className="field text-center uppercase tracking-[0.3em]" value=${q} onChange=${(e) => setQ(e.target.value)} placeholder="AD-XXXXXX" autoComplete="off" autoCapitalize="characters" spellCheck="false" />
                   <//>
                   ${err && html`<p role="alert" className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">${err}</p>`}
-                  <div className="text-center"><button type="submit" disabled=${busy} className=${btnPrimary}>${busy ? 'Recherche…' : 'Afficher mon billet'}</button></div>
+                  <div className="text-center"><button type="submit" disabled=${busy} className=${btnPrimary}>${busy ? 'Recherche…' : 'Ouvrir mon invitation'}</button></div>
                 </form>`}
           </div>
         <//>

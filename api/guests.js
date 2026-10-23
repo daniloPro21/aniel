@@ -3,10 +3,10 @@
 // GET    /api/guests?q=<nom|code>     -> recherche par nom, prénom, code, téléphone ou e-mail
 // GET    /api/guests?code=AD-XXXXXX   -> une invitation complète (avec son QR code)
 // GET    /api/guests?format=csv       -> export CSV (ouvrable dans Excel)
-// POST   /api/guests { prenom, nom, personnes, telephone, table, presence } -> crée une invitation + QR code
+// POST   /api/guests { prenom, nom, personnes, telephone, table, presence, billetPhysique } -> crée une invitation + QR code
 // POST   /api/guests { action: 'checkin', code }            -> contrôle à l'entrée (scan)
 // POST   /api/guests { action: 'shared', code }             -> marque l'invitation comme envoyée (WhatsApp)
-// POST   /api/guests { action: 'import', rows: [{ nom, prenom, telephone, personnes, presence }] } -> import Excel
+// POST   /api/guests { action: 'import', rows: [{ nom, prenom, telephone, personnes, presence, billetPhysique }] } -> import Excel
 // POST   /api/guests { action: 'tableName', table, name }  -> renomme une table (nom vide = nom par défaut)
 // PATCH  /api/guests?code=AD-XXXXXX { ...champs }           -> modifie une invitation (dont la table)
 // DELETE /api/guests?code=AD-XXXXXX   -> supprime une invitation
@@ -20,13 +20,13 @@ function safeEqual(a, b) {
 }
 
 const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-const LIST_COLS = 'id,code,prenom,nom,email,telephone,presence,personnes,restrictions,message,source,table_num,shared_at,checked_in_at,created_at';
+const LIST_COLS = 'id,code,prenom,nom,email,telephone,presence,personnes,restrictions,message,source,table_num,billet_physique,shared_at,checked_in_at,responded_at,created_at';
 const PRESENCES = ['oui', 'attente', 'non'];
 
 const fold = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const listItem = ({ id, qr, created_at, checked_in_at, shared_at, table_num, ...g }) =>
-  ({ ...g, table: table_num || null, sharedAt: shared_at, checkedInAt: checked_in_at, createdAt: created_at });
-const adminGuest = (g, names) => ({ ...publicGuest(g), tableName: g.table_num && names ? names[g.table_num] : null, telephone: g.telephone || '', source: g.source, sharedAt: g.shared_at, checkedInAt: g.checked_in_at });
+const listItem = ({ id, qr, created_at, checked_in_at, shared_at, responded_at, table_num, billet_physique, ...g }) =>
+  ({ ...g, table: table_num || null, billetPhysique: Boolean(billet_physique), sharedAt: shared_at, checkedInAt: checked_in_at, respondedAt: responded_at, createdAt: created_at });
+const adminGuest = (g, names) => ({ ...publicGuest(g), tableName: g.table_num && names ? names[g.table_num] : null, telephone: g.telephone || '', source: g.source, billetPhysique: Boolean(g.billet_physique), sharedAt: g.shared_at, checkedInAt: g.checked_in_at, respondedAt: g.responded_at });
 const codeOf = (v) => (clean(v, 200).toUpperCase().match(/AD-[A-Z0-9]{6}/) || [])[0];
 
 const httpError = (status, message) => Object.assign(new Error(message), { status });
@@ -68,6 +68,7 @@ function summarize(all, names) {
       places: seats(coming.filter((g) => g.table)),
       sansTable: seats(coming.filter((g) => !g.table)),
       envoyes: all.filter((g) => g.sharedAt).length,
+      physiques: all.filter((g) => g.billetPhysique).length,
       arrives: all.filter((g) => g.checkedInAt).length,
       capacite: TABLES * SEATS,
     },
@@ -95,7 +96,7 @@ async function importRows(db, input) {
     if (seen.has(key)) return skipped.push({ line, reason: `${prenom} ${nom} existe déjà` });
     seen.add(key);
     const st = fold(x.presence).replace(/[^a-z]/g, '');
-    rows.push({ prenom, nom, telephone: clean(x.telephone, 30), personnes: p, presence: PRESENCE_WORDS[st] || 'attente', source: 'import' });
+    rows.push({ prenom, nom, telephone: clean(x.telephone, 30), personnes: p, presence: PRESENCE_WORDS[st] || 'attente', billet_physique: Boolean(x.billetPhysique), source: 'import' });
   });
   let created = 0;
   for (let i = 0; i < rows.length; i += 100) {
@@ -143,8 +144,9 @@ module.exports = async (req, res) => {
       const guests = all.filter((g) => terms.every((t) => [g.prenom, g.nom, g.code, g.telephone, g.email].some((v) => fold(v).includes(t))));
 
       if (req.query.format === 'csv') {
-        const cols = ['code', 'prenom', 'nom', 'personnes', 'table', 'telephone', 'presence', 'sharedAt', 'checkedInAt', 'createdAt'];
-        const lines = [cols.join(';')].concat(guests.map((g) => cols.map((c) => csvCell(g[c])).join(';')));
+        const cols = ['code', 'prenom', 'nom', 'personnes', 'table', 'telephone', 'presence', 'billetPhysique', 'sharedAt', 'respondedAt', 'checkedInAt', 'createdAt'];
+        const cell = (g, c) => (c === 'billetPhysique' ? (g[c] ? 'oui' : 'non') : g[c]);
+        const lines = [cols.join(';')].concat(guests.map((g) => cols.map((c) => csvCell(cell(g, c))).join(';')));
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', 'attachment; filename="invites-annie-daniel.csv"');
         return res.status(200).send('﻿' + lines.join('\n'));
@@ -205,6 +207,7 @@ module.exports = async (req, res) => {
         personnes: parsePersonnes(b.personnes),
         presence: PRESENCES.includes(b.presence) ? b.presence : 'attente',
         table_num: parseTable(b.table),
+        billet_physique: Boolean(b.billetPhysique),
         source: 'admin',
       };
       await checkSeats(db, row.table_num, row.personnes, row.presence, null);
@@ -235,6 +238,7 @@ module.exports = async (req, res) => {
       if ('personnes' in b) row.personnes = parsePersonnes(b.personnes);
       if ('presence' in b && PRESENCES.includes(b.presence)) row.presence = b.presence;
       if ('table' in b) row.table_num = parseTable(b.table);
+      if ('billetPhysique' in b) row.billet_physique = Boolean(b.billetPhysique);
       if (row.prenom === '' || row.nom === '') return res.status(400).json({ error: 'Nom et prénom requis.' });
       const next = { ...cur, ...row };
       await checkSeats(db, next.table_num, next.personnes || 1, next.presence, cur.id);

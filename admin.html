@@ -40,7 +40,7 @@
   .pop { animation: pop .35s cubic-bezier(.16,1,.3,1) both; }
   @media (prefers-reduced-motion: reduce) { .rise, .pop { animation: none; } }
 </style>
-<link rel="stylesheet" href="/tw.css?v=1">
+<link rel="stylesheet" href="/tw.css?v=2">
 </head>
 <body class="font-sans">
 <div id="root"></div>
@@ -178,6 +178,7 @@ const Status = ({ p }) => { const [l, c] = STATUS[p] || STATUS.attente; return h
 const TablePill = ({ n }) => n
   ? html`<span className="tnum inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-or-300/10 px-2.5 py-1 text-[11px] font-semibold text-or-200 ring-1 ring-or-300/25">${tableLabel(n)}</span>`
   : html`<span className="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] text-ivoire/40 ring-1 ring-dashed ring-ivoire/15">Sans table</span>`;
+const PaperPill = ({ on }) => on && html`<span className="whitespace-nowrap rounded-full bg-ivoire/10 px-2.5 py-1 text-[11px] font-medium text-ivoire/80 ring-1 ring-ivoire/20">Billet papier</span>`;
 const Avatar = ({ g }) => html`
   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emeraude-700 to-emeraude-900 font-display text-base uppercase text-or-200 ring-1 ring-or-300/25">${initials(g)}</span>`;
 
@@ -254,7 +255,8 @@ function ShareModal({ code, onClose, onChanged, toast }) {
             <p className="font-display text-2xl leading-tight">${g.prenom} ${g.nom}</p>
             <p className="tnum text-xs text-ivoire/50">${g.code} · ${plural(g.personnes || 1, 'personne')}${g.telephone ? ' · ' + g.telephone : ''}</p>
           </div>
-          <div className="flex flex-wrap gap-2 sm:ml-auto"><${TablePill} n=${g.table} /><${Status} p=${g.presence} />
+          <div className="flex flex-wrap gap-2 sm:ml-auto"><${TablePill} n=${g.table} /><${Status} p=${g.presence} /><${PaperPill} on=${g.billetPhysique} />
+            ${g.respondedAt && html`<span className="rounded-full bg-ivoire/5 px-2.5 py-1 text-[11px] text-ivoire/60 ring-1 ring-ivoire/10">Réponse en ligne ${fmtTime(g.respondedAt)}</span>`}
             ${g.sharedAt && html`<span className="rounded-full bg-[#25D366]/10 px-2.5 py-1 text-[11px] text-[#7ee2a6] ring-1 ring-[#25D366]/30">Envoyé ${fmtTime(g.sharedAt)}</span>`}</div>
         </div>
 
@@ -307,8 +309,8 @@ function TableSelect({ plan, value, personnes, selfCode, onChange }) {
 function GuestForm({ guest, plan, onClose, onSaved }) {
   const editing = Boolean(guest);
   const [f, setF] = useState(() => guest
-    ? { prenom: guest.prenom, nom: guest.nom, personnes: guest.personnes || 1, telephone: guest.telephone || '', table: guest.table || '', presence: guest.presence || 'attente' }
-    : { prenom: '', nom: '', personnes: 1, telephone: '', table: '', presence: 'attente' });
+    ? { prenom: guest.prenom, nom: guest.nom, personnes: guest.personnes || 1, telephone: guest.telephone || '', table: guest.table || '', presence: guest.presence || 'attente', billetPhysique: Boolean(guest.billetPhysique) }
+    : { prenom: '', nom: '', personnes: 1, telephone: '', table: '', presence: 'attente', billetPhysique: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const set = (k) => (e) => setF({ ...f, [k]: e && e.target ? e.target.value : e });
@@ -340,6 +342,10 @@ function GuestForm({ guest, plan, onClose, onSaved }) {
           ${L({ t: 'Table', children: html`<${TableSelect} plan=${plan} value=${f.table} personnes=${Number(f.personnes)} selfCode=${guest && guest.code} onChange=${set('table')} />` })}
           ${L({ t: 'Statut', children: html`<select className="field" value=${f.presence} onChange=${set('presence')}>${Object.entries(STATUS).map(([k, [l]]) => html`<option key=${k} value=${k}>${l}</option>`)}</select>` })}
         </div>
+        <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-ivoire/10 bg-ivoire/[0.03] px-4 py-3 transition hover:border-or-300/30">
+          <input type="checkbox" className="h-4 w-4 accent-[#E8CB8F]" checked=${f.billetPhysique} onChange=${(e) => setF({ ...f, billetPhysique: e.target.checked })} />
+          <span className="text-sm"><span className="font-medium">Billet physique remis</span><span className="block text-xs text-ivoire/45">Cochez si un billet papier a été donné en main propre.</span></span>
+        </label>
         ${err && html`<p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">${err}</p>`}
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           <button type="button" className=${btnLine} onClick=${onClose}>Annuler</button>
@@ -394,7 +400,7 @@ function Overview({ data, go }) {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <${Stat} label="Personnes attendues" value=${t.personnes} sub=${`sur ${t.capacite} places · ${plural(t.invitations, 'invitation')}`} delay=${60}><${Bar} value=${t.personnes} max=${t.capacite} /><//>
         <${Stat} label="Placées à table" value=${t.places} sub=${`${t.sansTable} sans table · ${full}/${plan.tables} tables complètes`} delay=${120}><${Bar} value=${t.places} max=${t.personnes} tone="green" /><//>
-        <${Stat} label="Invitations envoyées" value=${t.envoyes} sub=${`sur ${t.invitations} via WhatsApp`} delay=${180}><${Bar} value=${t.envoyes} max=${t.invitations} tone="green" /><//>
+        <${Stat} label="Invitations envoyées" value=${t.envoyes} sub=${`sur ${t.invitations} via WhatsApp · ${plural(t.physiques || 0, 'billet')} papier`} delay=${180}><${Bar} value=${t.envoyes} max=${t.invitations} tone="green" /><//>
         <${Stat} label="Arrivés le jour J" value=${t.arrives} sub="scannés à l’entrée" delay=${240}><${Bar} value=${t.arrives} max=${t.invitations} /><//>
       </div>
 
@@ -439,6 +445,8 @@ const FILTERS = [
   ['oui', 'Confirmés', (g) => g.presence === 'oui'],
   ['attente', 'À confirmer', (g) => g.presence === 'attente'],
   ['non', 'Absents', (g) => g.presence === 'non'],
+  ['paper', 'Billet papier', (g) => g.billetPhysique],
+  ['nopaper', 'Sans billet papier', (g) => !g.billetPhysique],
   ['arrived', 'Arrivés', (g) => g.checkedInAt],
 ];
 
@@ -473,10 +481,10 @@ function Guests({ data, filter, setFilter, onShare, onEdit, onDelete, toast }) {
             <${Avatar} g=${g} />
             <div className="min-w-0 flex-1 basis-[calc(100%-52px)] sm:basis-auto">
               <p className="truncate font-medium">${g.prenom} ${g.nom} <span className="font-normal text-ivoire/45">· ${g.personnes || 1} pers.</span></p>
-              <p className="tnum truncate text-xs text-ivoire/45">${g.code}${g.telephone ? ' · ' + g.telephone : ''}</p>
+              <p className="tnum truncate text-xs text-ivoire/45">${g.code}${g.telephone ? ' · ' + g.telephone : ''}${g.respondedAt ? ' · a répondu le ' + fmtTime(g.respondedAt) : ''}</p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 pl-[52px] sm:pl-0">
-              <${TablePill} n=${g.table} /><${Status} p=${g.presence} />
+              <${TablePill} n=${g.table} /><${Status} p=${g.presence} /><${PaperPill} on=${g.billetPhysique} />
               ${g.checkedInAt && html`<span className="rounded-full bg-emeraude-500 px-2.5 py-1 text-[11px] font-medium text-white">Arrivé ${fmtTime(g.checkedInAt)}</span>`}
             </div>
             <div className="ml-auto flex items-center">
@@ -592,8 +600,10 @@ function Tables({ data, onOpen }) {
    Import Excel : Nom, Prénom, Téléphone (facultatif), Nombre de personnes (1 ou 2), Statut
    ===================================================================== */
 const COLS = { nom: ['nom', 'name', 'lastname'], prenom: ['prenom', 'prenoms', 'firstname'], telephone: ['telephone', 'tel', 'phone', 'portable', 'whatsapp', 'numero'],
-  personnes: ['nombredepersonnes', 'nombredepersonne', 'nombre', 'personnes', 'personne', 'nb', 'nbpersonnes'], presence: ['statut', 'status', 'presence'] };
-const ORDER = ['nom', 'prenom', 'telephone', 'personnes', 'presence'];
+  personnes: ['nombredepersonnes', 'nombredepersonne', 'nombre', 'personnes', 'personne', 'nb', 'nbpersonnes'], presence: ['statut', 'status', 'presence'],
+  billet: ['billetphysique', 'billetpapier', 'billet', 'papier'] };
+const ORDER = ['nom', 'prenom', 'telephone', 'personnes', 'presence', 'billet'];
+const BILLET_IN = { oui: true, o: true, x: true, '1': true, yes: true, remis: true, donne: true, non: false, n: false, '0': false, no: false, '': false };
 const STATUT_IN = { oui: 'oui', confirme: 'oui', confirmee: 'oui', present: 'oui', presente: 'oui', non: 'non', absent: 'non', absente: 'non',
   attente: 'attente', enattente: 'attente', aconfirmer: 'attente', invite: 'attente', invitee: 'attente', '': 'attente' };
 const key = (v) => fold(v).replace(/[^a-z]/g, '');
@@ -613,8 +623,10 @@ function parseSheet(aoa, existing) {
     const raw = fold(get('personnes')).replace(/[^a-z0-9]/g, '');
     const personnes = raw === '' || raw === '1' || raw === 'seul' || raw === 'seule' ? 1 : raw === '2' || raw === 'couple' || raw === 'encouple' ? 2 : NaN;
     const st = key(get('presence'));
-    const row = { line: i + (hasHeader ? 2 : 1), nom: get('nom'), prenom: get('prenom'), telephone: get('telephone'), personnes, presence: STATUT_IN[st] };
+    const billet = fold(get('billet')).replace(/[^a-z0-9]/g, '');
+    const row = { line: i + (hasHeader ? 2 : 1), nom: get('nom'), prenom: get('prenom'), telephone: get('telephone'), personnes, presence: STATUT_IN[st], billetPhysique: BILLET_IN[billet] };
     const errs = [];
+    if (row.billetPhysique === undefined) errs.push(`billet physique « ${get('billet')} » : mettez Oui ou Non`);
     if (!row.nom || !row.prenom) errs.push('nom ou prénom manquant');
     if (!personnes) errs.push(`« ${get('personnes')} » : mettez 1 ou 2`);
     if (!row.presence) errs.push(`statut « ${get('presence')} » inconnu`);
@@ -648,8 +660,8 @@ function ImportModal({ onClose, onDone }) {
     } catch (e) { setRows(null); setErr(e.message || 'Fichier illisible.'); }
   };
   const template = () => {
-    const ws = XLSX.utils.aoa_to_sheet([['Nom', 'Prénom', 'Téléphone', 'Nombre de personnes', 'Statut'], ['Mfonzie', 'Jean', '699112233', 2, 'Confirmé'], ['Ndam', 'Awa', '', 1, 'À confirmer']]);
-    ws['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 14 }];
+    const ws = XLSX.utils.aoa_to_sheet([['Nom', 'Prénom', 'Téléphone', 'Nombre de personnes', 'Statut', 'Billet physique'], ['Mfonzie', 'Jean', '699112233', 2, 'Confirmé', 'Oui'], ['Ndam', 'Awa', '', 1, 'À confirmer', 'Non']]);
+    ws['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 16 }];
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Invités');
     XLSX.writeFile(wb, 'modele-invites-annie-daniel.xlsx');
   };
@@ -668,7 +680,7 @@ function ImportModal({ onClose, onDone }) {
     <${Modal} onClose=${onClose} wide>
       <p className=${kicker}>Import en masse</p>
       <h2 className="mt-2 font-display text-3xl font-light">Importer des invités depuis Excel</h2>
-      <p className="mt-2 text-sm text-ivoire/55">Colonnes : <strong className="text-ivoire/80">Nom, Prénom, Téléphone</strong> (facultatif), <strong className="text-ivoire/80">Nombre de personnes</strong> (1 = seul, 2 = couple), <strong className="text-ivoire/80">Statut</strong> (Confirmé, À confirmer ou Absent). Les codes et QR codes sont créés automatiquement.</p>
+      <p className="mt-2 text-sm text-ivoire/55">Colonnes : <strong className="text-ivoire/80">Nom, Prénom, Téléphone</strong> (facultatif), <strong className="text-ivoire/80">Nombre de personnes</strong> (1 = seul, 2 = couple), <strong className="text-ivoire/80">Statut</strong> (Confirmé, À confirmer ou Absent), <strong className="text-ivoire/80">Billet physique</strong> (facultatif : Oui ou Non). Les codes et QR codes sont créés automatiquement.</p>
 
       ${result ? html`
         <div className="mt-6 rounded-3xl border border-emeraude-400/30 bg-emeraude-400/10 p-6 text-center">
@@ -697,7 +709,7 @@ function ImportModal({ onClose, onDone }) {
           <div className="scroll-thin mt-3 max-h-[45vh] overflow-auto rounded-2xl border border-ivoire/10">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-nuit-700 text-[10px] uppercase tracking-widest text-ivoire/50">
-                <tr>${['Ligne', 'Nom', 'Prénom', 'Téléphone', 'Pers.', 'Statut', ''].map((h) => html`<th key=${h} className="px-3 py-2 font-medium">${h}</th>`)}</tr>
+                <tr>${['Ligne', 'Nom', 'Prénom', 'Téléphone', 'Pers.', 'Statut', 'Papier', ''].map((h) => html`<th key=${h} className="px-3 py-2 font-medium">${h}</th>`)}</tr>
               </thead>
               <tbody>
                 ${rows.map((r) => html`
@@ -707,6 +719,7 @@ function ImportModal({ onClose, onDone }) {
                     <td className="tnum px-3 py-2 text-ivoire/60">${r.telephone}</td>
                     <td className="px-3 py-2">${r.personnes === 2 ? 'Couple' : r.personnes === 1 ? 'Seul(e)' : '—'}</td>
                     <td className="px-3 py-2">${r.presence ? html`<${Status} p=${r.presence} />` : '—'}</td>
+                    <td className="px-3 py-2 text-ivoire/60">${r.billetPhysique ? 'Oui' : r.billetPhysique === false ? 'Non' : '—'}</td>
                     <td className="px-3 py-2 text-red-300">${r.errs.join(', ')}</td>
                   </tr>`)}
               </tbody>

@@ -36,6 +36,19 @@ create table if not exists public.wedding_tables (
 );
 alter table public.wedding_tables enable row level security;
 
+-- v5 : l'invité confirme ou se désiste depuis le site + billet physique remis
+-- Au premier passage seulement, les invitations « Confirmé » repassent « À confirmer » :
+-- chaque invité confirme désormais lui-même sur le site.
+do $$
+begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'guests' and column_name = 'responded_at') then
+    alter table public.guests add column responded_at timestamptz;  -- dernière réponse de l'invité sur le site
+    update public.guests set presence = 'attente' where presence = 'oui' and checked_in_at is null;
+  end if;
+end $$;
+alter table public.guests add column if not exists billet_physique boolean not null default false; -- billet papier remis en main propre
+
 -- Sécurité : RLS activé et AUCUNE policy => la clé publique (anon) ne peut ni lire ni écrire.
 -- Seules les fonctions /api (avec la clé service_role, gardée côté serveur) accèdent aux données.
 alter table public.guests enable row level security;
