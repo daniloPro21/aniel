@@ -40,7 +40,7 @@
   .pop { animation: pop .35s cubic-bezier(.16,1,.3,1) both; }
   @media (prefers-reduced-motion: reduce) { .rise, .pop { animation: none; } }
 </style>
-<link rel="stylesheet" href="/tw.css?v=3">
+<link rel="stylesheet" href="/tw.css?v=4">
 </head>
 <body class="font-sans">
 <div id="root"></div>
@@ -96,7 +96,7 @@ function waNumber(tel) {
 
 const MESSAGES = [
   { label: 'Chaleureux', build: (g, p) => [
-    `Bonjour ${g.prenom} 🤍`,
+    `Bonjour ${p.qui} 🤍`,
     '',
     `C’est avec le cœur rempli de joie que nous vous annonçons notre mariage ! Après cinq belles années, nous allons nous dire « Oui » devant Dieu, et ce serait un immense bonheur de vous avoir à nos côtés pour vivre ce moment avec nous. 💍`,
     '',
@@ -117,7 +117,7 @@ const MESSAGES = [
     `Annie & Daniel ✨`,
   ] },
   { label: 'Élégant', build: (g, p) => [
-    `Bonjour ${g.prenom},`,
+    `Bonjour ${p.qui},`,
     '',
     `Annie & Daniel, ainsi que leurs familles, ont l’immense joie de vous inviter à la célébration de leur mariage, le ${EVENT.jour.toLowerCase()} à Yaoundé.`,
     '',
@@ -133,7 +133,7 @@ const MESSAGES = [
     `Annie & Daniel`,
   ] },
   { label: 'Court', build: (g, p) => [
-    `${g.prenom}, vous êtes invité${p.e} à notre mariage le 12 décembre 2026 ! 🎉💍`,
+    `${p.qui}, vous êtes invité${p.e} à notre mariage le 12 décembre 2026 ! 🎉💍`,
     `👉 Confirmez votre présence${p.pour} ici pour recevoir votre billet : ${p.link}`,
     `Code : ${g.code}${p.table ? ` · Table ${p.tname}` : ''}`,
     `On a tellement hâte de vous voir ! Annie & Daniel 🤍`,
@@ -141,7 +141,9 @@ const MESSAGES = [
 ];
 function buildMessage(g, variant) {
   const n = g.personnes || 1;
-  const p = { link: inviteLink(g.code), pers: n > 1 ? ` (valable pour ${n} personnes)` : '', pour: n > 1 ? ` pour ${n} personnes` : '', table: Boolean(g.table), tname: g.tableName || NAMES[g.table] || g.table, e: n > 1 ? 's' : '(e)' };
+  const p = { link: inviteLink(g.code), pers: n > 1 ? ` (valable pour ${n} personnes)` : '', pour: n > 1 ? ` pour ${n} personnes` : '',
+    qui: n > 1 ? `M. & Mme ${g.nom}` : g.prenom,   // billet couple : « Bonjour M. & Mme Nom »
+    table: Boolean(g.table), tname: g.tableName || NAMES[g.table] || g.table, e: n > 1 ? 's' : '(e)' };
   return MESSAGES[variant].build(g, p).filter((l) => l !== false && l !== null && l !== undefined)
     .join('\n').replace(/\n{3,}/g, '\n\n');
 }

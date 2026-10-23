@@ -1,15 +1,20 @@
 // CSS Tailwind précompilé (remplace cdn.tailwindcss.com, trop lourd pour les mobiles)
 // Après une modification des classes dans index.html / admin.html :  npm run css
+// Les couleurs passent par des variables CSS (styles/input.css) : le mode clair du site
+// (classe « light » sur <html>) les redéfinit sans toucher aux classes.
+const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+const scale = (name, steps) => Object.fromEntries(steps.map((s) => [s, v(`${name}-${s}`)]));
+
 module.exports = {
   content: ['./index.html', './admin.html', './ticket.js'],
   theme: {
     extend: {
       colors: {
-        nuit: { DEFAULT: '#03110C', 900: '#03110C', 800: '#051A13', 700: '#07231A', 600: '#0A2D21' },
-        emeraude: { 50: '#F2F7F4', 100: '#DDEEE6', 300: '#7FC2A8', 400: '#3FA382', 500: '#1A8A68', 600: '#138063', 700: '#0F6650', 800: '#0C4033', 900: '#0A3024', 950: '#06251B' },
-        or: { 100: '#FAF0D6', 200: '#F3DFA8', 300: '#E8CB8F', 400: '#D4AE6A', 500: '#C0954D', 600: '#A27A36' },
-        brule: { 400: '#F08A50', 500: '#E2672B', 600: '#C9561F' },
-        ivoire: '#F5EFE3',
+        nuit: { DEFAULT: v('nuit'), ...scale('nuit', [900, 800, 700, 600]) },
+        emeraude: scale('emeraude', [50, 100, 300, 400, 500, 600, 700, 800, 900, 950]),
+        or: scale('or', [100, 200, 300, 400, 500, 600]),
+        brule: scale('brule', [400, 500, 600]),
+        ivoire: v('ivoire'),
       },
       fontFamily: {
         display: ['"Cormorant Garamond"', 'Georgia', 'serif'],

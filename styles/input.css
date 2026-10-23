@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Palette (canaux R G B) — mode sombre par défaut, utilisé aussi par /admin */
+:root {
+  --nuit: 3 17 12; --nuit-900: 3 17 12; --nuit-800: 5 26 19; --nuit-700: 7 35 26; --nuit-600: 10 45 33;
+  --emeraude-50: 242 247 244; --emeraude-100: 221 238 230; --emeraude-300: 127 194 168; --emeraude-400: 63 163 130;
+  --emeraude-500: 26 138 104; --emeraude-600: 19 128 99; --emeraude-700: 15 102 80; --emeraude-800: 12 64 51;
+  --emeraude-900: 10 48 36; --emeraude-950: 6 37 27;
+  --or-100: 250 240 214; --or-200: 243 223 168; --or-300: 232 203 143; --or-400: 212 174 106; --or-500: 192 149 77; --or-600: 162 122 54;
+  --brule-400: 240 138 80; --brule-500: 226 103 43; --brule-600: 201 86 31;
+  --ivoire: 245 239 227;
+  --gold: linear-gradient(100deg,#B98A3E 0%,#F3DFA8 30%,#C0954D 55%,#F3DFA8 80%,#B98A3E 100%);
+}
+
+/* Mode clair du site public : fond ivoire, encre vert profond, ors assombris pour rester lisibles */
+html.light {
+  color-scheme: light;
+  --nuit: 251 247 239; --nuit-900: 251 247 239; --nuit-800: 244 237 223; --nuit-700: 237 227 208; --nuit-600: 229 216 192;
+  --emeraude-300: 15 102 80; --emeraude-700: 127 194 168; --emeraude-800: 191 222 208;
+  --emeraude-900: 221 238 230; --emeraude-950: 234 244 239;
+  --or-100: 94 68 19; --or-200: 122 90 30; --or-300: 154 116 50; --or-400: 169 130 62; --or-500: 138 101 38; --or-600: 110 79 28;
+  --brule-400: 201 86 31;
+  --ivoire: 10 42 32;
+  --gold: linear-gradient(100deg,#6E4F1C 0%,#B98A3E 30%,#7A5A1E 55%,#B98A3E 80%,#6E4F1C 100%);
+}
+html.light .text-red-100 { color: #991B1B; }
+html.light .map-dark { filter: none; }
+html.light .grain::after { opacity: .035; }
+/* Ombres noires (pensées pour le fond sombre) adoucies sur fond clair */
+html.light [class*="rgba(0,0,0"] { --tw-shadow: 0 24px 60px -28px rgb(10 42 32 / .28); box-shadow: var(--tw-shadow); }
