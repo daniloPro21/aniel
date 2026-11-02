@@ -39,8 +39,26 @@
   @keyframes pop { from { opacity: 0; transform: scale(.97) translateY(8px); } to { opacity: 1; transform: none; } }
   .pop { animation: pop .35s cubic-bezier(.16,1,.3,1) both; }
   @media (prefers-reduced-motion: reduce) { .rise, .pop { animation: none; } }
+  /* Plan de salle (onglet Tables > Salle) */
+  .salle { touch-action: none; user-select: none; -webkit-user-select: none; }
+  .salle .room { fill: rgba(245,239,227,.025); stroke: rgba(232,203,143,.45); stroke-width: 3; }
+  .salle .door { fill: #03110C; }
+  .salle .lbl { fill: rgba(245,239,227,.4); font: 600 14px Inter, sans-serif; letter-spacing: 3px; }
+  .salle .tb, .salle .loge { cursor: grab; }
+  .salle .drag { cursor: grabbing; }
+  .salle .top { fill: #0B2A20; stroke: rgba(232,203,143,.5); stroke-width: 2; }
+  .salle .full .top { fill: #3A2F17; stroke: #E8CB8F; }
+  .salle .drag .top, .salle .drag .lg { stroke: #F3DFA8; stroke-width: 4; }
+  .salle .chair { fill: #03110C; stroke: rgba(232,203,143,.45); stroke-width: 2; }
+  .salle .chair.on { fill: #C0954D; stroke: #C0954D; }
+  .salle .num { fill: #F5EFE3; font-family: Inter, sans-serif; font-weight: 600; text-anchor: middle; }
+  .salle .nm { fill: rgba(243,223,168,.75); font-family: Inter, sans-serif; text-anchor: middle; }
+  .salle .lg { fill: #C0954D; stroke: transparent; stroke-width: 4; }
+  .salle .lg-t { fill: #03110C; font: 600 15px Inter, sans-serif; letter-spacing: 3px; text-anchor: middle; }
+  .salle .lg-n { fill: #03110C; font: 28px 'Great Vibes', cursive; text-anchor: middle; }
+  .salle .lg-c { fill: #E8CB8F; }
 </style>
-<link rel="stylesheet" href="/tw.css?v=4">
+<link rel="stylesheet" href="/tw.css?v=5">
 </head>
 <body class="font-sans">
 <div id="root"></div>
@@ -568,7 +586,207 @@ function TableModal({ n, data, onClose, assign, onShare, rename }) {
     <//>`;
 }
 
-function Tables({ data, onOpen }) {
+/* =====================================================================
+   Disposition de la salle : on glisse les tables et la loge, puis on imprime pour le protocole
+   ===================================================================== */
+const SALLE = { W: 1400, H: 900, x: 30, y: 40, w: 1340, h: 800 };
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const escHtml = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Disposition automatique : loge au milieu, moitié des tables à gauche, moitié à droite,
+// numérotées à partir de la colonne la plus proche de la loge, de haut en bas.
+function autoLayout(count, cols) {
+  const S = SALLE, perSide = Math.ceil(count / 2), rows = Math.ceil(perSide / cols);
+  const aisleL = S.W / 2 - 110, aisleR = S.W / 2 + 110;
+  const colGap = (aisleL - S.x - 10) / cols, rowGap = (S.h - 60) / rows;
+  const tables = {};
+  for (let n = 1; n <= count; n++) {
+    const left = n <= perSide, k = left ? n - 1 : n - 1 - perSide;
+    const dx = (Math.floor(k / rows) + 0.5) * colGap;
+    tables[n] = { x: Math.round(left ? aisleL - dx : aisleR + dx), y: Math.round(S.y + 30 + ((k % rows) + 0.5) * rowGap) };
+  }
+  const scale = Math.round(Math.min(1, colGap / 130, rowGap / 125) * 100) / 100;
+  return { cols, scale, loge: { x: S.W / 2, y: S.y + S.h / 2 }, tables };
+}
+const withDefaults = (saved, count) => {
+  const base = autoLayout(count, (saved && saved.cols) || 4);
+  return saved ? { ...base, ...saved, loge: saved.loge || base.loge, tables: { ...base.tables, ...(saved.tables || {}) } } : base;
+};
+
+function SallePlan({ plan, layout, dragId, svgRef, onDown, onMove, onUp }) {
+  const S = SALLE, k = layout.scale || 1, R = 34 * k, CD = 47 * k, CR = 8 * k;
+  const L = layout.loge, LW = 180, LH = 90;
+  return html`
+    <svg ref=${svgRef} className="salle block h-auto w-full" viewBox=${`0 0 ${S.W} ${S.H}`} xmlns="http://www.w3.org/2000/svg"
+      onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>
+      <text className="lbl" x=${S.W / 2} y="26" textAnchor="middle">FOND DE LA SALLE</text>
+      <rect className="room" x=${S.x} y=${S.y} width=${S.w} height=${S.h} rx="8" />
+      <rect className="door" x=${S.W / 2 - 80} y=${S.y + S.h - 4} width="160" height="8" />
+      <text className="lbl" x=${S.W / 2} y=${S.y + S.h + 38} textAnchor="middle">▲ ENTRÉE ▲</text>
+      <g className=${'loge' + (dragId === 'loge' ? ' drag' : '')} onPointerDown=${onDown('loge')}>
+        <circle className="lg-c" cx=${L.x - 28} cy=${L.y - LH / 2 - 16} r="12" />
+        <circle className="lg-c" cx=${L.x + 28} cy=${L.y - LH / 2 - 16} r="12" />
+        <rect className="lg" x=${L.x - LW / 2} y=${L.y - LH / 2} width=${LW} height=${LH} rx="10" />
+        <text className="lg-t" x=${L.x} y=${L.y - 8}>LOGE</text>
+        <text className="lg-n" x=${L.x} y=${L.y + 26}>Annie & Daniel</text>
+      </g>
+      ${plan.list.map((t) => {
+        const p = layout.tables[t.n];
+        if (!p) return null;
+        const full = t.used >= plan.seats;
+        return html`<g key=${t.n} className=${'tb' + (full ? ' full' : '') + (dragId === t.n ? ' drag' : '')} onPointerDown=${onDown(t.n)}>
+          ${Array.from({ length: plan.seats }, (_, i) => {
+            const a = (i / plan.seats) * 2 * Math.PI - Math.PI / 2;
+            return html`<circle key=${i} className=${'chair' + (i < t.used ? ' on' : '')} cx=${p.x + CD * Math.cos(a)} cy=${p.y + CD * Math.sin(a)} r=${CR} />`;
+          })}
+          <circle className="top" cx=${p.x} cy=${p.y} r=${R} />
+          <text className="num" x=${p.x} y=${p.y + 3 * k} fontSize=${22 * k}>${t.n}</text>
+          <text className="nm" x=${p.x} y=${p.y + 19 * k} fontSize=${(t.name.length > 9 ? 8.5 : 10.5) * k}>${t.name}</text>
+        </g>`;
+      })}
+    </svg>`;
+}
+
+// Fenêtre imprimable (fond clair) : page 1 le plan, page 2 la liste des tables avec les invités
+function printSalle(svgEl, plan) {
+  const w = window.open('', '_blank');
+  if (!w) return false;
+  const cards = plan.list.map((t) => `<div class="card"><div class="h"><b>${t.n} · ${escHtml(t.name)}</b><span>${t.used}/${plan.seats}</span></div>
+    <p>${t.guests.map((g) => escHtml(`${g.prenom} ${g.nom}`) + ((g.personnes || 1) > 1 ? ` ×${g.personnes}` : '')).join(' · ') || '<i>—</i>'}</p></div>`).join('');
+  w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Plan de salle — Annie & Daniel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Great+Vibes&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  body { margin: 0; font-family: Inter, sans-serif; color: #0A3024; }
+  .page { page-break-after: always; } .page:last-child { page-break-after: auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #C0954D; margin-bottom: 4mm; }
+  h1 { font: 30pt 'Great Vibes', cursive; color: #8A6A1F; margin: 0; }
+  header p { font-size: 9pt; letter-spacing: .15em; text-transform: uppercase; margin: 0; }
+  svg { width: 100%; height: auto; }
+  .salle .room { fill: #fff; stroke: #0A3024; stroke-width: 4; } .salle .door { fill: #fff; }
+  .salle .lbl { fill: #0A3024; font: 600 15px Inter, sans-serif; letter-spacing: 3px; }
+  .salle .top { fill: #F3EAD2; stroke: #0A3024; stroke-width: 2; }
+  .salle .chair, .salle .chair.on { fill: #fff; stroke: #C0954D; stroke-width: 2; }
+  .salle .num { fill: #0A3024; font-family: Inter, sans-serif; font-weight: 600; text-anchor: middle; }
+  .salle .nm { fill: #5B4A1C; font-family: Inter, sans-serif; text-anchor: middle; }
+  .salle .lg { fill: #0A3024; } .salle .lg-c { fill: #C0954D; }
+  .salle .lg-t { fill: #F3DFA8; font: 600 15px Inter, sans-serif; letter-spacing: 3px; text-anchor: middle; }
+  .salle .lg-n { fill: #F3DFA8; font: 28px 'Great Vibes', cursive; text-anchor: middle; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; }
+  .card { border: 1px solid #D8C79C; border-radius: 2mm; padding: 1.5mm 2.5mm; break-inside: avoid; }
+  .card .h { display: flex; justify-content: space-between; } .card b { font: 600 11pt 'Cormorant Garamond', serif; }
+  .card span { font-size: 8pt; color: #6B7280; } .card p { margin: .5mm 0 0; font-size: 7.5pt; line-height: 1.35; color: #374151; }
+</style></head><body>
+<section class="page"><header><h1>Annie &amp; Daniel</h1><p>Plan de salle · ${escHtml(EVENT.jour)} · ${plan.tables} tables × ${plan.seats} places + loge</p></header>${svgEl.outerHTML}</section>
+<section class="page"><header><h1>Liste des tables</h1><p>À remettre au protocole</p></header><div class="grid">${cards}</div></section>
+</body></html>`);
+  w.document.close();
+  const go = () => setTimeout(() => { w.focus(); w.print(); }, 300);
+  (w.document.fonts ? w.document.fonts.ready : Promise.resolve()).then(go, go);
+  return true;
+}
+
+function Salle({ data, onOpen, toast }) {
+  const plan = data.plan;
+  const [layout, setLayout] = useState(null);
+  const [cols, setCols] = useState(4);
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [warn, setWarn] = useState('');
+  const [dragId, setDragId] = useState(null);
+  const svgRef = useRef(null);
+  const drag = useRef(null);
+
+  useEffect(() => {
+    api('/api/guests?layout=1')
+      .then((d) => { const l = withDefaults(d.layout, plan.tables); setLayout(l); setCols(l.cols); if (d.missing) setWarn('Pour enregistrer la disposition, lancez d’abord le script SQL (partie v6 de supabase.sql) dans Supabase.'); })
+      .catch((e) => { setLayout(autoLayout(plan.tables, 4)); setWarn(e.message); });
+  }, []);
+  useEffect(() => {   // prévient avant de quitter la page sans enregistrer
+    if (!dirty) return;
+    const h = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
+
+  if (!layout) return html`<div className="card h-96 animate-pulse"></div>`;
+
+  const toSvg = (e) => { const p = svgRef.current.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svgRef.current.getScreenCTM().inverse()); };
+  const onDown = (id) => (e) => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    const p = toSvg(e), cur = id === 'loge' ? layout.loge : layout.tables[id];
+    try { svgRef.current.setPointerCapture(e.pointerId); } catch {}
+    drag.current = { id, dx: p.x - cur.x, dy: p.y - cur.y, sx: p.x, sy: p.y, moved: false };
+    setDragId(id);
+  };
+  const onMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    const p = toSvg(e);
+    if (!d.moved && Math.hypot(p.x - d.sx, p.y - d.sy) < 5) return;
+    d.moved = true;
+    const S = SALLE, snap = (v) => Math.round(v / 5) * 5;
+    const pos = { x: clamp(snap(p.x - d.dx), S.x + 25, S.x + S.w - 25), y: clamp(snap(p.y - d.dy), S.y + 25, S.y + S.h - 25) };
+    setLayout((l) => (d.id === 'loge' ? { ...l, loge: pos } : { ...l, tables: { ...l.tables, [d.id]: pos } }));
+    setDirty(true);
+  };
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    setDragId(null);
+    if (d && !d.moved && d.id !== 'loge') onOpen(d.id);   // simple clic : on ouvre la table
+  };
+  const reset = () => {
+    if (dirty || Object.keys(layout.tables).length) { if (!confirm(`Replacer toutes les tables automatiquement (${cols} colonnes de chaque côté de la loge) ?`)) return; }
+    setLayout(autoLayout(plan.tables, cols)); setDirty(true);
+  };
+  const save = async () => {
+    setBusy(true);
+    try { await api('/api/guests', { method: 'POST', body: JSON.stringify({ action: 'layout', layout }) }); setDirty(false); setWarn(''); toast('Disposition enregistrée ✨'); }
+    catch (e) { toast(e.message); }
+    setBusy(false);
+  };
+  const print = () => { if (!printSalle(svgRef.current, plan)) toast('Autorisez les fenêtres pop-up pour imprimer.'); };
+
+  return html`
+    <div className="space-y-4">
+      <div className="card flex flex-wrap items-center gap-3 p-4">
+        <label className="flex items-center gap-2 text-sm text-ivoire/70">Colonnes de chaque côté
+          <select className="field !w-auto !py-2" value=${cols} onChange=${(e) => setCols(Number(e.target.value))}>
+            ${[2, 3, 4, 5, 6].map((c) => html`<option key=${c} value=${c}>${c} colonnes · ${Math.ceil(Math.ceil(plan.tables / 2) / c)} rangées</option>`)}
+          </select></label>
+        <button className=${btnLine + ' !py-2'} onClick=${reset}>Disposition automatique</button>
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          ${dirty && html`<span className="self-center text-xs text-or-200">Modifications non enregistrées</span>`}
+          <button className=${btnLine + ' !py-2'} onClick=${print}><${Icon} name="download" />Imprimer pour le protocole</button>
+          <button className=${btnGold + ' !py-2'} disabled=${!dirty || busy} onClick=${save}>${busy ? 'Enregistrement…' : 'Enregistrer'}</button>
+        </div>
+      </div>
+      ${warn && html`<p className="rounded-2xl bg-or-300/10 px-4 py-3 text-sm text-or-100">${warn}</p>`}
+      <p className="text-xs text-ivoire/50">Glissez les tables et la loge pour reproduire votre salle. Touchez une table pour voir et placer ses invités. Les chaises dorées sont des places déjà attribuées.</p>
+      <div className="card overflow-x-auto p-2 sm:p-4">
+        <div className="min-w-[640px]">
+          <${SallePlan} plan=${plan} layout=${layout} dragId=${dragId} svgRef=${svgRef} onDown=${onDown} onMove=${onMove} onUp=${onUp} />
+        </div>
+      </div>
+    </div>`;
+}
+
+function Tables({ data, onOpen, toast }) {
+  const [mode, setMode] = useState(() => { try { return localStorage.getItem('ad-tables-mode') || 'list'; } catch { return 'list'; } });
+  const pick = (m) => { setMode(m); try { localStorage.setItem('ad-tables-mode', m); } catch {} };
+  return html`
+    <div className="space-y-4">
+      <div className="flex rounded-full border border-ivoire/10 p-0.5 sm:w-fit">
+        ${[['list', 'Liste des tables'], ['salle', 'Disposition de la salle']].map(([k, l]) => html`<button key=${k} onClick=${() => pick(k)}
+          className=${'flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-sm transition ' + (mode === k ? 'bg-or-300 font-semibold text-nuit' : 'text-ivoire/60 hover:text-ivoire')}>${l}</button>`)}
+      </div>
+      ${mode === 'salle' ? html`<${Salle} data=${data} onOpen=${onOpen} toast=${toast} />` : html`<${TableList} data=${data} onOpen=${onOpen} />`}
+    </div>`;
+}
+
+function TableList({ data, onOpen }) {
   const plan = data.plan;
   const [show, setShow] = useState('all');
   const list = plan.list.filter((t) => show === 'all' || (show === 'free' ? t.used < plan.seats : t.used >= plan.seats));
@@ -667,12 +885,8 @@ function ImportModal({ onClose, onDone }) {
       setRows(parsed);
     } catch (e) { setRows(null); setErr(e.message || 'Fichier illisible.'); }
   };
-  const template = () => {
-    const ws = XLSX.utils.aoa_to_sheet([['Nom', 'Prénom', 'Téléphone', 'Nombre de personnes', 'Statut', 'Billet physique'], ['Mfonzie', 'Jean', '699112233', 2, 'Confirmé', 'Oui'], ['Ndam', 'Awa', '', 1, 'À confirmer', 'Non']]);
-    ws['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 16 }];
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Invités');
-    XLSX.writeFile(wb, 'modele-invites-annie-daniel.xlsx');
-  };
+  // Modèle statique (listes déroulantes + onglet « Mode d'emploi ») : /modele-invites.xlsx
+  const template = () => window.downloadUrl('/modele-invites.xlsx', 'modele-invites-annie-daniel.xlsx');
   const good = rows ? rows.filter((r) => !r.errs.length) : [];
   const bad = rows ? rows.filter((r) => r.errs.length) : [];
   const send = async () => {
@@ -921,7 +1135,7 @@ function App() {
             : !data ? !err && html`<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">${[0, 1, 2, 3].map((i) => html`<div key=${i} className="card h-36 animate-pulse"></div>`)}</div>`
             : view === 'home' ? html`<${Overview} data=${data} go=${go} />`
             : view === 'guests' ? html`<${Guests} data=${data} filter=${filter} setFilter=${setFilter} onShare=${setShare} onEdit=${(g) => setForm({ guest: g })} onDelete=${del} toast=${toast} />`
-            : html`<${Tables} data=${data} onOpen=${setTable} />`}
+            : html`<${Tables} data=${data} onOpen=${setTable} toast=${toast} />`}
         </main>
       </div>
 

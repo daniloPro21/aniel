@@ -8,6 +8,8 @@
 // POST   /api/guests { action: 'shared', code }             -> marque l'invitation comme envoyée (WhatsApp)
 // POST   /api/guests { action: 'import', rows: [{ nom, prenom, telephone, personnes, presence, billetPhysique }] } -> import Excel
 // POST   /api/guests { action: 'tableName', table, name }  -> renomme une table (nom vide = nom par défaut)
+// GET    /api/guests?layout=1                              -> disposition de la salle
+// POST   /api/guests { action: 'layout', layout }           -> enregistre la disposition de la salle
 // PATCH  /api/guests?code=AD-XXXXXX { ...champs }           -> modifie une invitation (dont la table)
 // DELETE /api/guests?code=AD-XXXXXX   -> supprime une invitation
 const crypto = require('crypto');
@@ -113,6 +115,17 @@ async function importRows(db, input) {
   return { created, skipped };
 }
 
+// Disposition de la salle : positions (coordonnées du plan 1400 × 900) de la loge et des tables
+const noLayoutTable = (e) => e && (e.code === '42P01' || e.code === 'PGRST205');
+function cleanLayout(b) {
+  const num = (v, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : null; };
+  const pos = (p) => { const x = num(p && p.x, 0, 1400), y = num(p && p.y, 0, 900); return x === null || y === null ? null : { x, y }; };
+  const l = b || {};
+  const out = { cols: num(l.cols, 1, 10) || 4, scale: Math.min(1, Math.max(0.4, Number(l.scale) || 1)), loge: pos(l.loge), tables: {} };
+  for (let n = 1; n <= TABLES; n++) { const p = pos(l.tables && l.tables[n]); if (p) out.tables[n] = p; }
+  return out;
+}
+
 function readBody(req) {
   let b = req.body || {};
   if (typeof b === 'string') b = JSON.parse(b || '{}');
@@ -133,6 +146,15 @@ module.exports = async (req, res) => {
       if (r.error) throw r.error;
       if (!r.data) return res.status(404).json({ code: 'NOT_FOUND', error: 'Invitation introuvable.' });
       return res.status(200).json({ guest: adminGuest(await ensureQr(db, req, r.data), await tableNames(db)) });
+    }
+
+    if (req.method === 'GET' && req.query.layout) {
+      const r = await db.from('wedding_layout').select('data').eq('id', 1).maybeSingle();
+      if (r.error) {
+        if (noLayoutTable(r.error)) return res.status(200).json({ layout: null, missing: true });
+        throw r.error;
+      }
+      return res.status(200).json({ layout: r.data ? r.data.data : null });
     }
 
     if (req.method === 'GET') {
@@ -194,6 +216,16 @@ module.exports = async (req, res) => {
           throw r.error;
         }
         return res.status(200).json({ table, name: name || defaultTableName(table) });
+      }
+
+      if (b.action === 'layout') {
+        const layout = cleanLayout(b.layout);
+        const r = await db.from('wedding_layout').upsert({ id: 1, data: layout, updated_at: new Date().toISOString() });
+        if (r.error) {
+          if (noLayoutTable(r.error)) return res.status(503).json({ error: 'Lancez d’abord le script SQL (table wedding_layout manquante).' });
+          throw r.error;
+        }
+        return res.status(200).json({ layout });
       }
 
       if (b.action === 'import') return res.status(200).json(await importRows(db, b.rows));

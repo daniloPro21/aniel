@@ -49,6 +49,14 @@ begin
 end $$;
 alter table public.guests add column if not exists billet_physique boolean not null default false; -- billet papier remis en main propre
 
+-- v6 : disposition de la salle (position des tables et de la loge, réglée depuis /admin > Tables > Salle)
+create table if not exists public.wedding_layout (
+  id         int primary key default 1 check (id = 1),
+  data       jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.wedding_layout enable row level security;
+
 -- Sécurité : RLS activé et AUCUNE policy => la clé publique (anon) ne peut ni lire ni écrire.
 -- Seules les fonctions /api (avec la clé service_role, gardée côté serveur) accèdent aux données.
 alter table public.guests enable row level security;
